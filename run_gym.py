@@ -5,9 +5,8 @@ import numpy as np
 from absl import app, flags, logging
 
 import gym
-import envlogger
 
-from oxe_envlogger.env_logger import DMEnvWrapper, make_env_logger, GymReturn
+from oxe_envlogger.env_logger import DmEnvWrapper, make_env_logger, GymReturn
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
@@ -25,7 +24,7 @@ flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
 def wrap_env_logger(env: gym.Env):
     """Simple util to wrap gym.Env to dm_env.Environment."""
     logging.info('Wrapping environment with EnvironmentLogger...')
-    env = DMEnvWrapper(env)
+    env = DmEnvWrapper(env)
 
     # This function will be called at every step of the environment.
     def step_fn(unused_timestep, unused_action, unused_env):
@@ -54,8 +53,8 @@ def wrap_env_logger(env: gym.Env):
 
     # make env logger
     env = make_env_logger(
-        dataset_name,
         env,
+        dataset_name,
         directory=FLAGS.output_dir,
         max_episodes_per_file=500,
         step_metadata=step_metadata,

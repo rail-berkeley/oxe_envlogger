@@ -14,7 +14,7 @@ import tensorflow as tf
 from typing import Any, Dict, List, Tuple, Optional, Callable
 
 
-class DMEnvWrapper(gym.Wrapper):
+class DmEnvWrapper(gym.Wrapper):
     """
     This class wraps gym.Env with dm_env.Environment
     EnvLogger uses dm_env.Environment interface, which requires the use of `spec`
@@ -114,8 +114,8 @@ MetadataCallback = Callable[[dm_env.TimeStep, Any, dm_env.Environment], Any]
 
 
 def make_env_logger(
-    dataset_name: str,
     env: dm_env.Environment,
+    dataset_name: str,
     directory: str,
     max_episodes_per_file: int,
     step_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,

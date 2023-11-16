@@ -48,3 +48,20 @@ cp -rf datasets/half_cheetah/ ~/tensorflow_datasets/
 
 python load_example_oxe.py
 ```
+
+## Usage
+
+Just add the following lines to your code to wrap your env with the logger. For more detailed example, check `run_gym.py`
+
+```py
+from oxe_envlogger.env_logger import DmEnvWrapper, make_env_logger
+
+env = YOUR_GYM_ENV
+env = DmEnvWrapper(env)
+env = make_env_logger(
+    env,
+    YOUR_DATASET_NAME,
+    directory=YOUR_OUTPUT_DIR
+    max_episodes_per_file=500,
+)
+```
