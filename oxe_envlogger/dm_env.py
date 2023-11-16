@@ -73,8 +73,8 @@ class DummyDmEnv():
         self.observation_space = observation_space
         self.action_space = action_space
 
-    def step(self, action) -> dm_env.TimeStep:
-        val = self.step_callback(action)
+    def step(self, action, **kwargs) -> dm_env.TimeStep:
+        val = self.step_callback(action, **kwargs)
         obs, reward, truncate, terminate, info = val
         reward = float(reward)
         if terminate:
@@ -83,8 +83,8 @@ class DummyDmEnv():
             ts = dm_env.transition(reward=reward, observation=obs)
         return ts
 
-    def reset(self) -> dm_env.TimeStep:
-        obs, _ = self.reset_callback()
+    def reset(self, **kwargs) -> dm_env.TimeStep:
+        obs, _ = self.reset_callback(**kwargs)
         ts = dm_env.restart(obs)
         return ts
 

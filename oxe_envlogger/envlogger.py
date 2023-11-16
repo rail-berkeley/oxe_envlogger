@@ -116,14 +116,20 @@ class OXEEnvLogger(gym.Wrapper):
                                           backend=writer
                                           )
 
-    def step(self, action) -> Tuple:
-        """Return TupleObservation, Reward, Discount, Info"""
-        val = self.dm_env.step(action)
+    def step(self, action, **kwargs) -> Tuple:
+        """
+        Return Tuple:
+            obs, reward, truncate, terminate, info
+        """
+        val = self.dm_env.step(action, **kwargs)
         return GymReturn.convert_step(val)
 
-    def reset(self) -> Tuple:
-        """Return TupleObservation and Info"""
-        val = self.dm_env.reset()
+    def reset(self, **kwargs) -> Tuple:
+        """
+        Return Tuple:
+            Observation and Info
+        """
+        val = self.dm_env.reset(**kwargs)
         return GymReturn.convert_reset(val)
 
 

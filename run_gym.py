@@ -6,7 +6,7 @@ from absl import app, flags, logging
 
 import gym
 
-from oxe_envlogger.env_logger import OXEEnvLogger
+from oxe_envlogger.envlogger import OXEEnvLogger
 import tensorflow_datasets as tfds
 import tensorflow as tf
 

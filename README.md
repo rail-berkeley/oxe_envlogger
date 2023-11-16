@@ -9,6 +9,8 @@ Env logger for robots. For [open-x-embodiment](https://robotics-transformer-x.gi
 This package wraps the [envlogger](https://github.com/google-deepmind/envlogger) lib to make it compatible with OXE and openai gym env.
 
 ```bash
+sudo apt install libgmp-dev
+
 cd oxe_envlogger
 pip install -e .
 ```
@@ -54,7 +56,7 @@ python load_example_oxe.py
 Just add the following lines to your code to wrap your env with the logger. For more detailed example, check `run_gym.py`
 
 ```py
-from oxe_envlogger.env_logger import OXEEnvLogger
+from oxe_envlogger.envlogger import OXEEnvLogger
 
 env = YOUR_GYM_ENV
 env = OXEEnvLogger(
