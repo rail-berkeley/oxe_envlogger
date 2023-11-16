@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local development settings
+.env
+
+# Dependency directories
+venv/
+env/
+env.bak/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# PyCharm files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+logs/
+datasets/
