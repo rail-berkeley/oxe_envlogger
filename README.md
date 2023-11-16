@@ -54,11 +54,10 @@ python load_example_oxe.py
 Just add the following lines to your code to wrap your env with the logger. For more detailed example, check `run_gym.py`
 
 ```py
-from oxe_envlogger.env_logger import DmEnvWrapper, make_env_logger
+from oxe_envlogger.env_logger import OXEEnvLogger
 
 env = YOUR_GYM_ENV
-env = DmEnvWrapper(env)
-env = make_env_logger(
+env = OXEEnvLogger(
     env,
     YOUR_DATASET_NAME,
     directory=YOUR_OUTPUT_DIR
