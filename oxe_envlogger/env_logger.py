@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import numpy as np
 
 import gym
@@ -10,10 +11,10 @@ from envlogger.backends import tfds_backend_writer
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional, Callable
 
 
-class DMEnvWrapper(gym.Wrapper):
+class DmEnvWrapper(gym.Wrapper):
     """
     This class wraps gym.Env with dm_env.Environment
     EnvLogger uses dm_env.Environment interface, which requires the use of `spec`
@@ -67,58 +68,88 @@ class DMEnvWrapper(gym.Wrapper):
         )
 
 
-def step_return(val: Any) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+class GymReturn:
     """
-    This function ensures that the return value of gym.Env.step is consistent
-    :val either a dm_env.TimeStep or a tuple of (obs, reward, truncate, terminate, info)
+    Since EnvLogger uses dm_env.Environment interface,
+    we need to convert the return values of dm_env.TimeStep to return values of gym.Env
+    to ensure consistency.
     """
-    if isinstance(val, dm_env.TimeStep):
-        obs = val.observation
-        reward = val.reward
-        truncate = False
-        terminate = val.last()
-        info = {}
-    else:
-        obs, reward, truncate, terminate, info = val
-    return obs, reward, truncate, terminate, info
+    
+    def convert_step(val: Any) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+        """
+        This function ensures that the return value of gym.Env.step is consistent
+        :arg val either a dm_env.TimeStep or a tuple of (obs, reward, truncate, terminate, info)
+        :return obs, reward, truncate, terminate, info
+        """
+        if isinstance(val, dm_env.TimeStep):
+            obs = val.observation
+            reward = val.reward
+            truncate = False
+            terminate = val.last()
+            info = {}
+        else:
+            obs, reward, truncate, terminate, info = val
+        return obs, reward, truncate, terminate, info
 
 
-def reset_return(val: Any) -> Tuple[np.ndarray, dict]:
-    """
-    This function ensures that the return value of gym.Env.reset is consistent
-    :val either a dm_env.TimeStep or a tuple of (obs, reward, truncate, terminate, info)
-    """
-    if isinstance(val, dm_env.TimeStep):
-        obs = val.observation
-        info = {}
-    else:
-        obs, info = val
-    return obs, info
+    def convert_reset(val: Any) -> Tuple[np.ndarray, dict]:
+        """
+        This function ensures that the return value of gym.Env.reset is consistent
+        :arg val either a dm_env.TimeStep or a tuple of (obs, info)
+        :return obs, info
+        """
+        if isinstance(val, dm_env.TimeStep):
+            obs = val.observation
+            info = {}
+        else:
+            obs, info = val
+        return obs, info
 
 
-# define metadata info
+# Define MetadataInfo and MetadataCallback types
+# https://github.com/google-deepmind/envlogger/blob/dc2c6a30be843eeb3fe841737f763ecabcb3a30a/envlogger/environment_logger.py#L45-L48
+
 MetadataInfo = Dict[str, tfds.features.FeatureConnector]
+MetadataCallback = Callable[[dm_env.TimeStep, Any, dm_env.Environment], Any]
 
 
-def make_env_writer(
+def make_env_logger(
+    env: dm_env.Environment,
     dataset_name: str,
-    env: gym.Env,
     directory: str,
     max_episodes_per_file: int,
-    step_metadata_info: Optional[MetadataInfo] = None,
-    episode_metadata_info: Optional[MetadataInfo] = None,
+    step_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,
+    episode_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,
     version: str = '0.1.0',
-) -> tfds_backend_writer.TFDSBackendWriter:
+) -> dm_env.Environment:
     """
-    Makes a TFDSBackendWriter for a given environment.
+    Makes an env for a given environment. If custom data needs to be logged,
+    add it by passing in `step_metadata` and `episode_metadata`.
     args:
         dataset_name: name of the dataset
         env: gym.Env instance
         directory: directory to store the trajectories
         max_episodes_per_file: maximum number of episodes to store in a single file
-        step_metadata_info: dict of custom metadata information for each step
-        episode_metadata_info: dict of custom metadata information for each episode
+        step_metadata: tuple of (step_metadata_info, step_fn)
+        episode_metadata: tuple of (episode_metadata_info, episode_fn)
     """
+    # ensure directory exists
+    assert os.path.exists(directory), f"{directory} does not exist"
+
+    if step_metadata is None:
+        step_metadata_info, step_fn = None, None
+    else:
+        assert len(
+            step_metadata) == 2, "should be a tuple of (step_metadata_info, step_fn)"
+        step_metadata_info, step_fn = step_metadata
+
+    if episode_metadata is None:
+        episode_metadata_info, episode_fn = None, None
+    else:
+        assert len(
+            episode_metadata) == 2, "should be a tuple of (episode_metadata_info, episode_fn)"
+        episode_metadata_info, episode_fn = episode_metadata
+
     # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
     dataset_config = tfds.rlds.rlds_base.DatasetConfig(
         name=dataset_name,
@@ -145,5 +176,10 @@ def make_env_writer(
         max_episodes_per_file=max_episodes_per_file,
         ds_config=dataset_config,
         version=version,
-        )
-    return writer
+    )
+    env = envlogger.EnvLogger(env,
+                              step_fn=step_fn,
+                              episode_fn=episode_fn,
+                              backend=writer
+                              )
+    return env
