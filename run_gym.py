@@ -7,7 +7,7 @@ from absl import app, flags, logging
 import gym
 import envlogger
 
-from oxe_envlogger.env_logger import DMEnvWrapper, make_env_writer, step_return
+from oxe_envlogger.env_logger import DMEnvWrapper, make_env_logger, GymReturn
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
@@ -21,8 +21,10 @@ flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
 
 ##############################################################################
 
+
 def wrap_env_logger(env: gym.Env):
     """Simple util to wrap gym.Env to dm_env.Environment."""
+    logging.info('Wrapping environment with EnvironmentLogger...')
     env = DMEnvWrapper(env)
 
     # This function will be called at every step of the environment.
@@ -32,7 +34,7 @@ def wrap_env_logger(env: gym.Env):
         }
 
     # This function will be called at every episode of the environment.
-    def episode_fn(unused_timestep, unused_arg2, unused_env):
+    def episode_fn(unused_timestep, unused_action, unused_env):
         return {
             'language_embedding': np.random.random((5,)).astype(np.float32),
         }
@@ -42,29 +44,23 @@ def wrap_env_logger(env: gym.Env):
         dataset_name = "half_cheetah"
     else:
         dataset_name = FLAGS.env_name
-        
-    # create writer for env logging
-    writer = make_env_writer(
+
+    # Define tuple of MetadataInfo and MetadataCallback
+    step_metadata = ({'timestamp': tf.int64}, step_fn)
+    episode_metadata = (
+        {'language_embedding': tfds.features.Tensor(shape=(5,), dtype=tf.float32),},
+        episode_fn
+    )
+
+    # make env logger
+    env = make_env_logger(
         dataset_name,
         env,
         directory=FLAGS.output_dir,
         max_episodes_per_file=500,
-        step_metadata_info={
-            'timestamp': tf.int64,
-        },
-        episode_metadata_info={
-            'language_embedding': tfds.features.Tensor(shape=(5,), dtype=tf.float32),
-        },
+        step_metadata=step_metadata,
+        episode_metadata=episode_metadata,
     )
-
-    logging.info('Wrapping environment with EnvironmentLogger...')
-
-    # Log the environment.
-    env = envlogger.EnvLogger(env,
-                                step_fn=step_fn,
-                                episode_fn=episode_fn,
-                                backend=writer
-                                )
     logging.info('Done wrapping environment with EnvironmentLogger.')
     return env
 
@@ -90,9 +86,9 @@ def main(unused_argv):
         while not done:
             action = env.action_space.sample()
             timestep = env.step(action)
-            
+
             # this ensure that the return value of gym.Env.step is consistent
-            obs, reward, _, done, _ = step_return(timestep)
+            obs, reward, _, done, _ = GymReturn.convert_step(timestep)
 
     logging.info(
         'Done training a random agent for %r episodes.', FLAGS.num_episodes)

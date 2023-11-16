@@ -1,15 +1,19 @@
 # oxe_envlogger
 
-> Make data collection for robot learning easy ➡️ more reusable datasets. 🤖📈
+> Make data collection for robot learning easy ➡️ More reusable datasets. 🤖📈
 
 Env logger for robots. Related to [open-x-embodiment](https://robotics-transformer-x.github.io/)
 
 ## Installation
 
+This package wraps the [envlogger](https://github.com/google-deepmind/envlogger) lib to make it compatible with OXE and openai gym env.
+
 ```bash
 cd oxe_envlogger
 pip install -e .
 ```
+
+---
 
 ## Quick Run
 
@@ -20,13 +24,13 @@ Without env_logger
 python run_gym.py --env_name="HalfCheetah-v4" 
 ```
 
-2. Now, with env_logger `--enable_envlogger`
+2. Now, with env_logger
 
 ```bash
 # create directory
 mkdir -p datasets/half_cheetah/0.1.0
 
-# Run a gym environment
+# Run a gym environment  `--enable_envlogger`
 python run_gym.py --env_name="HalfCheetah-v4" --enable_envlogger --output_dir="datasets/half_cheetah/0.1.0"
 ```
 
