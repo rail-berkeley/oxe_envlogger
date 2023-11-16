@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+from pyquaternion import Quaternion
 import time
 import numpy as np
 from absl import app, flags, logging
 
 import gym
 
-from oxe_envlogger.env_logger import DmEnvWrapper, make_env_logger, GymReturn
+from oxe_envlogger.env_logger import OXEEnvLogger
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
@@ -18,13 +19,13 @@ flags.DEFINE_string('output_dir', 'datasets/',
 flags.DEFINE_string('env_name', 'CartPole-v1', 'Name of the environment.')
 flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
 
+
 ##############################################################################
 
 
 def wrap_env_logger(env: gym.Env):
     """Simple util to wrap gym.Env to dm_env.Environment."""
     logging.info('Wrapping environment with EnvironmentLogger...')
-    env = DmEnvWrapper(env)
 
     # This function will be called at every step of the environment.
     def step_fn(unused_timestep, unused_action, unused_env):
@@ -47,19 +48,21 @@ def wrap_env_logger(env: gym.Env):
     # Define tuple of MetadataInfo and MetadataCallback
     step_metadata = ({'timestamp': tf.int64}, step_fn)
     episode_metadata = (
-        {'language_embedding': tfds.features.Tensor(shape=(5,), dtype=tf.float32),},
+        {'language_embedding': tfds.features.Tensor(
+            shape=(5,), dtype=tf.float32), },
         episode_fn
     )
 
-    # make env logger
-    env = make_env_logger(
+    # # make env logger
+    env = OXEEnvLogger(
         env,
-        dataset_name,
+        dataset_name=FLAGS.env_name,
         directory=FLAGS.output_dir,
         max_episodes_per_file=500,
         step_metadata=step_metadata,
         episode_metadata=episode_metadata,
     )
+
     logging.info('Done wrapping environment with EnvironmentLogger.')
     return env
 
@@ -69,7 +72,8 @@ def wrap_env_logger(env: gym.Env):
 def main(unused_argv):
     logging.info(f'Creating gym environment...')
 
-    env = gym.make(FLAGS.env_name)
+    # env = gym.make(FLAGS.env_name)
+    env = WidowXGym()
     logging.info(f'Done creating {FLAGS.env_name} environment.')
 
     if FLAGS.enable_envlogger:
@@ -79,15 +83,12 @@ def main(unused_argv):
 
     for i in range(FLAGS.num_episodes):
         logging.info('episode %r', i)
-        timestep = env.reset()
+        obs, _ = env.reset()
         done = False
 
         while not done:
             action = env.action_space.sample()
-            timestep = env.step(action)
-
-            # this ensure that the return value of gym.Env.step is consistent
-            obs, reward, _, done, _ = GymReturn.convert_step(timestep)
+            obs, reward, _, done, _ = env.step(action)
 
     logging.info(
         'Done training a random agent for %r episodes.', FLAGS.num_episodes)

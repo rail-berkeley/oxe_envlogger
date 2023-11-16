@@ -62,12 +62,15 @@ if __name__ == "__main__":
     """
 
     is_last = False
+    step_count = 0
     for episode in ds.take(1):  # Take only the first episode for demonstration
         # Unpack the episode
         language_embedding, steps = episode['language_embedding'], episode['steps']
+        assert len(steps) == 1001, "Each episode should have 1001 steps for HalfCheetah env"
 
         # Iterate through steps in the episode
         for step in steps:
+            
             # Accessing step data
             timestamp = step['timestamp'].numpy()
             reward = step['reward'].numpy()
