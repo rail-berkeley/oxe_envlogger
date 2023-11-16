@@ -6,13 +6,12 @@ import numpy as np
 import gym
 import envlogger
 import dm_env
-from dm_env import specs
 from envlogger.backends import tfds_backend_writer
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
 from typing import Any, Dict, List, Tuple, Optional, Callable
-from oxe_envlogger.data_type import from_space_to_feature
+from oxe_envlogger.data_type import from_space_to_feature, populate_docs
 from oxe_envlogger.dm_env import GymReturn, DummyDmEnv, DmEnvWrapper
 
 # Define MetadataInfo and MetadataCallback types
@@ -20,6 +19,7 @@ from oxe_envlogger.dm_env import GymReturn, DummyDmEnv, DmEnvWrapper
 
 MetadataInfo = Dict[str, tfds.features.FeatureConnector]
 MetadataCallback = Callable[[dm_env.TimeStep, Any, dm_env.Environment], Any]
+DocField = Dict[str, str]
 
 
 class OXEEnvLogger(gym.Wrapper):
@@ -27,14 +27,6 @@ class OXEEnvLogger(gym.Wrapper):
     This is the easiest way to wrap gym.Env with EnvLogger. If 
     custom data needs to be logged,
     add it by passing in `step_metadata` and `episode_metadata`.
-
-    args:
-        dataset_name: name of the dataset
-        env: gym.Env instance
-        directory: directory to store the trajectories
-        max_episodes_per_file: maximum number of episodes to store in a single file
-        step_metadata: tuple of (step_metadata_info, step_fn)
-        episode_metadata: tuple of (episode_metadata_info, episode_fn)
     """
 
     def __init__(
@@ -47,8 +39,20 @@ class OXEEnvLogger(gym.Wrapper):
                                           MetadataCallback]] = None,
             episode_metadata: Optional[Tuple[MetadataInfo,
                                              MetadataCallback]] = None,
+            doc_field: DocField = {},
             version: str = '0.1.0',
     ):
+        """
+        args:
+            dataset_name: name of the dataset
+            env: gym.Env instance
+            directory: directory to store the trajectories
+            max_episodes_per_file: maximum number of episodes to store in a single file
+            step_metadata: tuple of (step_metadata_info, step_fn)
+            episode_metadata: tuple of (episode_metadata_info, episode_fn)
+            doc_field: dict of doc field for the dict tree in obs and action space
+            version: version of the dataset
+        """
         super().__init__(env)
         self.dataset_name = dataset_name
         self.directory = directory
@@ -85,10 +89,10 @@ class OXEEnvLogger(gym.Wrapper):
             episode_metadata_info, episode_fn = episode_metadata
 
         # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
-        dataset_config = tfds.rlds.rlds_base.DatasetConfig(
+        self.dataset_config = tfds.rlds.rlds_base.DatasetConfig(
             name=dataset_name,
-            observation_info=from_space_to_feature(env.observation_space),
-            action_info=from_space_to_feature(env.action_space),
+            observation_info=from_space_to_feature(env.observation_space, doc_field),
+            action_info=from_space_to_feature(env.action_space, doc_field),
             reward_info=tf.float64,
             discount_info=tf.float64,
             step_metadata_info=step_metadata_info,
@@ -96,11 +100,14 @@ class OXEEnvLogger(gym.Wrapper):
             version=version,
         )
 
+        self.dataset_config = populate_docs(
+            self.dataset_config, doc_field=doc_field)
+
         writer = tfds_backend_writer.TFDSBackendWriter(
             data_directory=directory,
             split_name='train',
             max_episodes_per_file=max_episodes_per_file,
-            ds_config=dataset_config,
+            ds_config=self.dataset_config,
             version=version,
         )
         self.dm_env = envlogger.EnvLogger(self.dm_env,
@@ -110,6 +117,7 @@ class OXEEnvLogger(gym.Wrapper):
                                           )
 
     def step(self, action) -> Tuple:
+        """Return TupleObservation, Reward, Discount, Info"""
         val = self.dm_env.step(action)
         return GymReturn.convert_step(val)
 
@@ -129,6 +137,7 @@ def make_env_logger(
     step_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,
     episode_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,
     version: str = '0.1.0',
+    doc_field: DocField = {},
 ) -> DmEnvWrapper:
     """
     NOTE: the env here is dm_env.Environment, not gym.Env
@@ -165,14 +174,16 @@ def make_env_logger(
     # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
     dataset_config = tfds.rlds.rlds_base.DatasetConfig(
         name=dataset_name,
-        observation_info=from_space_to_feature(env.observation_space),
-        action_info=from_space_to_feature(env.action_space),
+        observation_info=from_space_to_feature(env.observation_space, doc_field),
+        action_info=from_space_to_feature(env.action_space, doc_field),
         reward_info=tf.float64,
         discount_info=tf.float64,
         step_metadata_info=step_metadata_info,
         episode_metadata_info=episode_metadata_info,
         version=version,
     )
+
+    dataset_config = populate_docs(dataset_config, doc_field=doc_field)
 
     writer = tfds_backend_writer.TFDSBackendWriter(
         data_directory=directory,

@@ -6,7 +6,7 @@ import gym
 import dm_env
 from dm_env import specs
 
-from typing import Any, Dict, List, Tuple, Optional, Callable
+from typing import Any, Dict, List, Tuple, Callable
 from oxe_envlogger.data_type import from_space_to_spec
 
 
@@ -63,7 +63,6 @@ class DummyDmEnv():
                  reset_callback: Callable,
                  ):
         """
-
         :param observation_space: gym observation space
         :param action_space: gym action space
         :param step_callback: callback function to call gymenv.step
@@ -77,6 +76,7 @@ class DummyDmEnv():
     def step(self, action) -> dm_env.TimeStep:
         val = self.step_callback(action)
         obs, reward, truncate, terminate, info = val
+        reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
         else:
@@ -123,6 +123,7 @@ class DmEnvWrapper(gym.Wrapper):
     def step(self, action) -> dm_env.TimeStep:
         val = self.env.step(action)
         obs, reward, truncate, terminate, info = val
+        reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
         else:

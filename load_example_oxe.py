@@ -16,16 +16,25 @@ def print_yellow(x): return print("\033[93m {}\033[00m" .format(x))
 
 
 class HalfCheetah(dataset_importer_builder.DatasetImporterBuilder):
-    """DatasetBuilder for example `halfcheetah` dataset."""
+    """
+    DatasetBuilder for example `halfcheetah` dataset.
 
-    # NOTE: This is the name of the dataset folder, ideally we would like to opensource this
+    Check:
+    https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/robotics/rtx/rtx.py
+    """
+
+    # NOTE: This path to the datasets directory
     _GCS_BUCKET = os.path.expanduser("~/tensorflow_datasets")
 
     def get_description(self):
         return 'gym cheetah environment'
 
     def get_citation(self):
-        return """@article{}"""
+        return """@article{awesomepaper2023
+            title   = {Awesome paper title},
+            journal = {Journal of Awesomeness},
+        }
+        """
 
     def get_homepage(self):
         return 'https://github.com/google-deepmind/open_x_embodiment'
@@ -66,11 +75,12 @@ if __name__ == "__main__":
     for episode in ds.take(1):  # Take only the first episode for demonstration
         # Unpack the episode
         language_embedding, steps = episode['language_embedding'], episode['steps']
-        assert len(steps) == 1001, "Each episode should have 1001 steps for HalfCheetah env"
+        assert len(
+            steps) == 1001, "Each episode should have 1001 steps for HalfCheetah env"
 
         # Iterate through steps in the episode
         for step in steps:
-            
+
             # Accessing step data
             timestamp = step['timestamp'].numpy()
             reward = step['reward'].numpy()

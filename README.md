@@ -1,8 +1,8 @@
 # oxe_envlogger
 
-> Make data collection for robot learning easy ➡️ More reusable datasets. 🤖📈
+**Make data collection for robot learning easy ➡️ More reusable datasets. 🤖📈**
 
-Env logger for robots. Related to [open-x-embodiment](https://robotics-transformer-x.github.io/)
+Env logger for robots. For [open-x-embodiment](https://robotics-transformer-x.github.io/), aka OXE
 
 ## Installation
 
@@ -17,7 +17,7 @@ pip install -e .
 
 ## Quick Run
 
-1. A simple example is provided to show how to record a gym env.
+1. A simple example is provided to show how to record a [gym env](https://www.gymlibrary.dev/api/core/).
 
 Without env_logger
 ```bash
@@ -34,7 +34,7 @@ mkdir -p datasets/half_cheetah/0.1.0
 python run_gym.py --env_name="HalfCheetah-v4" --enable_envlogger --output_dir="datasets/half_cheetah/0.1.0"
 ```
 
-3. Check the recorded `tfds` data
+3. Check the recorded [tfds](https://www.tensorflow.org/datasets/api_docs/python/tfds) data
 
 This stores the data in `datasets/half_cheetah` directory. Check the data format in `cat datasets/half_cheetah/0.1.0/features.json`
 
