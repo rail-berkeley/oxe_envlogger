@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 
-from pyquaternion import Quaternion
 import time
 import numpy as np
 from absl import app, flags, logging
 
 import gym
 
-from oxe_envlogger.env_logger import OXEEnvLogger
+from oxe_envlogger.envlogger import OXEEnvLogger
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('num_episodes', 100, 'Number of episodes to log.')
+flags.DEFINE_integer('num_episodes', 10, 'Number of episodes to log.')
 flags.DEFINE_string('output_dir', 'datasets/',
                     'Path in a filesystem to record trajectories.')
 flags.DEFINE_string('env_name', 'CartPole-v1', 'Name of the environment.')
@@ -46,21 +45,26 @@ def wrap_env_logger(env: gym.Env):
         dataset_name = FLAGS.env_name
 
     # Define tuple of MetadataInfo and MetadataCallback
-    step_metadata = ({'timestamp': tf.int64}, step_fn)
-    episode_metadata = (
-        {'language_embedding': tfds.features.Tensor(
-            shape=(5,), dtype=tf.float32), },
-        episode_fn
-    )
+    step_metadata_info = {'timestamp': tfds.features.Tensor(shape=(),
+                                                            dtype=tf.float32,
+                                                            doc="Timestamp for the step.")}
+    episode_metadata_info = {'language_embedding': tfds.features.Tensor(
+        shape=(5,), dtype=tf.float32), }
 
-    # # make env logger
+    # make env logger
     env = OXEEnvLogger(
         env,
         dataset_name=FLAGS.env_name,
         directory=FLAGS.output_dir,
         max_episodes_per_file=500,
-        step_metadata=step_metadata,
-        episode_metadata=episode_metadata,
+        step_metadata=(step_metadata_info, step_fn),
+        episode_metadata=(episode_metadata_info, episode_fn),
+        doc_field={
+            'language_embedding': 'Language embedding for the episode.',
+            'timestamp': 'Timestamp for the step.',
+            "proprio": "Proprioception of the robot arm.",
+            "image_0": "RGB image from the camera.",
+        },
     )
 
     logging.info('Done wrapping environment with EnvironmentLogger.')
@@ -72,8 +76,7 @@ def wrap_env_logger(env: gym.Env):
 def main(unused_argv):
     logging.info(f'Creating gym environment...')
 
-    # env = gym.make(FLAGS.env_name)
-    env = WidowXGym()
+    env = gym.make(FLAGS.env_name)
     logging.info(f'Done creating {FLAGS.env_name} environment.')
 
     if FLAGS.enable_envlogger:

@@ -14,8 +14,8 @@ setup(
         'typing',
         'dm-env',
         'envlogger[tfds]',
-        "tensorflow>=2.13.0",
-        "tensorflow_datasets>=4.9.2",
+        "tensorflow>=2.10.0",
+        "tensorflow_datasets>=4.8.0",
     ],
     zip_safe=False
 )

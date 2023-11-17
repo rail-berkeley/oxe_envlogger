@@ -6,7 +6,7 @@ import gym
 import dm_env
 from dm_env import specs
 
-from typing import Any, Dict, List, Tuple, Optional, Callable
+from typing import Any, Dict, List, Tuple, Callable
 from oxe_envlogger.data_type import from_space_to_spec
 
 
@@ -63,7 +63,6 @@ class DummyDmEnv():
                  reset_callback: Callable,
                  ):
         """
-
         :param observation_space: gym observation space
         :param action_space: gym action space
         :param step_callback: callback function to call gymenv.step
@@ -75,15 +74,20 @@ class DummyDmEnv():
         self.action_space = action_space
 
     def step(self, action) -> dm_env.TimeStep:
+        # Note that dm_env.step doesn't accept additional arguments
         val = self.step_callback(action)
-        obs, reward, truncate, terminate, info = val
+        obs, reward, terminate, truncate, info = val
+        reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
+        elif truncate:
+            ts = dm_env.truncation(reward=reward, observation=obs)
         else:
             ts = dm_env.transition(reward=reward, observation=obs)
         return ts
 
     def reset(self) -> dm_env.TimeStep:
+        # Note that dm_env.reset doesn't accept additional arguments
         obs, _ = self.reset_callback()
         ts = dm_env.restart(obs)
         return ts
@@ -108,7 +112,6 @@ class DummyDmEnv():
             name='discount',
         )
 
-
 class DmEnvWrapper(gym.Wrapper):
     """
     This class wraps gym.Env with dm_env.Environment
@@ -122,9 +125,12 @@ class DmEnvWrapper(gym.Wrapper):
 
     def step(self, action) -> dm_env.TimeStep:
         val = self.env.step(action)
-        obs, reward, truncate, terminate, info = val
+        obs, reward, terminate, truncate, info = val
+        reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
+        elif truncate:
+            ts = dm_env.truncation(reward=reward, observation=obs)
         else:
             ts = dm_env.transition(reward=reward, observation=obs)
         return ts

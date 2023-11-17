@@ -1,14 +1,16 @@
 # oxe_envlogger
 
-> Make data collection for robot learning easy ➡️ More reusable datasets. 🤖📈
+**Make data collection for robot learning easy ➡️ More reusable datasets. 🤖📈**
 
-Env logger for robots. Related to [open-x-embodiment](https://robotics-transformer-x.github.io/)
+Env logger for robots. For [open-x-embodiment](https://robotics-transformer-x.github.io/), aka OXE
 
 ## Installation
 
 This package wraps the [envlogger](https://github.com/google-deepmind/envlogger) lib to make it compatible with OXE and openai gym env.
 
 ```bash
+sudo apt install libgmp-dev
+
 cd oxe_envlogger
 pip install -e .
 ```
@@ -17,7 +19,7 @@ pip install -e .
 
 ## Quick Run
 
-1. A simple example is provided to show how to record a gym env.
+1. A simple example is provided to show how to record a [gym env](https://www.gymlibrary.dev/api/core/).
 
 Without env_logger
 ```bash
@@ -34,7 +36,7 @@ mkdir -p datasets/half_cheetah/0.1.0
 python run_gym.py --env_name="HalfCheetah-v4" --enable_envlogger --output_dir="datasets/half_cheetah/0.1.0"
 ```
 
-3. Check the recorded `tfds` data
+3. Check the recorded [tfds](https://www.tensorflow.org/datasets/api_docs/python/tfds) data
 
 This stores the data in `datasets/half_cheetah` directory. Check the data format in `cat datasets/half_cheetah/0.1.0/features.json`
 
@@ -54,7 +56,7 @@ python load_example_oxe.py
 Just add the following lines to your code to wrap your env with the logger. For more detailed example, check `run_gym.py`
 
 ```py
-from oxe_envlogger.env_logger import OXEEnvLogger
+from oxe_envlogger.envlogger import OXEEnvLogger
 
 env = YOUR_GYM_ENV
 env = OXEEnvLogger(
