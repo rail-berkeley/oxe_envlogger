@@ -73,18 +73,22 @@ class DummyDmEnv():
         self.observation_space = observation_space
         self.action_space = action_space
 
-    def step(self, action, **kwargs) -> dm_env.TimeStep:
-        val = self.step_callback(action, **kwargs)
-        obs, reward, truncate, terminate, info = val
+    def step(self, action) -> dm_env.TimeStep:
+        # Note that dm_env.step doesn't accept additional arguments
+        val = self.step_callback(action)
+        obs, reward, terminate, truncate, info = val
         reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
+        elif truncate:
+            ts = dm_env.truncation(reward=reward, observation=obs)
         else:
             ts = dm_env.transition(reward=reward, observation=obs)
         return ts
 
-    def reset(self, **kwargs) -> dm_env.TimeStep:
-        obs, _ = self.reset_callback(**kwargs)
+    def reset(self) -> dm_env.TimeStep:
+        # Note that dm_env.reset doesn't accept additional arguments
+        obs, _ = self.reset_callback()
         ts = dm_env.restart(obs)
         return ts
 
@@ -108,7 +112,6 @@ class DummyDmEnv():
             name='discount',
         )
 
-
 class DmEnvWrapper(gym.Wrapper):
     """
     This class wraps gym.Env with dm_env.Environment
@@ -122,10 +125,12 @@ class DmEnvWrapper(gym.Wrapper):
 
     def step(self, action) -> dm_env.TimeStep:
         val = self.env.step(action)
-        obs, reward, truncate, terminate, info = val
+        obs, reward, terminate, truncate, info = val
         reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
+        elif truncate:
+            ts = dm_env.truncation(reward=reward, observation=obs)
         else:
             ts = dm_env.transition(reward=reward, observation=obs)
         return ts

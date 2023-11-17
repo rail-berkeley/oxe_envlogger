@@ -60,12 +60,15 @@ class OXEEnvLogger(gym.Wrapper):
         self.step_metadata = step_metadata
         self.episode_metadata = episode_metadata
         self.version = version
+        # this is a hack to pass in kwargs to the step and reset function
+        self.step_kwargs = {}
+        self.reset_kwargs = {}
 
         def step_callback(action):
-            return self.env.step(action)
+            return self.env.step(action, **self.step_kwargs)
 
         def reset_callback():
-            return self.env.reset()
+            return self.env.reset(**self.reset_kwargs)
 
         self.dm_env = DummyDmEnv(
             observation_space=env.observation_space,
@@ -115,13 +118,16 @@ class OXEEnvLogger(gym.Wrapper):
                                           episode_fn=episode_fn,
                                           backend=writer
                                           )
+        print("Done wrapping environment with EnvironmentLogger.")
 
     def step(self, action, **kwargs) -> Tuple:
         """
         Return Tuple:
             obs, reward, truncate, terminate, info
         """
-        val = self.dm_env.step(action, **kwargs)
+        self.step_kwargs = kwargs
+        val = self.dm_env.step(action)
+        self.step_kwargs = {}
         return GymReturn.convert_step(val)
 
     def reset(self, **kwargs) -> Tuple:
@@ -129,7 +135,9 @@ class OXEEnvLogger(gym.Wrapper):
         Return Tuple:
             Observation and Info
         """
-        val = self.dm_env.reset(**kwargs)
+        self.reset_kwargs = kwargs
+        val = self.dm_env.reset()
+        self.reset_kwargs = {}
         return GymReturn.convert_reset(val)
 
 
@@ -201,6 +209,6 @@ def make_env_logger(
     env = envlogger.EnvLogger(env,
                               step_fn=step_fn,
                               episode_fn=episode_fn,
-                              backend=writer
+                              backend=writer,
                               )
     return env
