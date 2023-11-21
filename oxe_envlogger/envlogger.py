@@ -17,8 +17,18 @@ from oxe_envlogger.dm_env import GymReturn, DummyDmEnv, DmEnvWrapper
 # Define MetadataInfo and MetadataCallback types
 # https://github.com/google-deepmind/envlogger/blob/dc2c6a30be843eeb3fe841737f763ecabcb3a30a/envlogger/environment_logger.py#L45-L48
 
+
+"""
+example of MetadataInfo:
+    step_metadata_info = {'timestamp': tfds.features.Tensor(
+        shape=(), dtype=tf.float32, doc="Timestamp for the step.")}
+
+example of MetadataCallback:
+    def step_fn(unused_timestep, unused_action, unused_env):
+        return {'timestamp': time.time(),}
+"""
 MetadataInfo = Dict[str, tfds.features.FeatureConnector]
-MetadataCallback = Callable[[dm_env.TimeStep, Any, dm_env.Environment], Any]
+MetadataCallback = Callable[..., Dict[str, Any]]
 DocField = Dict[str, str]
 
 
@@ -52,6 +62,11 @@ class OXEEnvLogger(gym.Wrapper):
             episode_metadata: tuple of (episode_metadata_info, episode_fn)
             doc_field: dict of doc field for the dict tree in obs and action space
             version: version of the dataset
+
+        NOTE: option to use helper class utils.MetadataLogger to log metadata,
+            provide the step_metadata and episode_metadata as follows:
+            step_metadata=metadata_logger.step_ref(),
+            episode_metadata=metadata_logger.episode_ref(),
         """
         super().__init__(env)
         self.dataset_name = dataset_name
@@ -94,7 +109,8 @@ class OXEEnvLogger(gym.Wrapper):
         # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
         self.dataset_config = tfds.rlds.rlds_base.DatasetConfig(
             name=dataset_name,
-            observation_info=from_space_to_feature(env.observation_space, doc_field),
+            observation_info=from_space_to_feature(
+                env.observation_space, doc_field),
             action_info=from_space_to_feature(env.action_space, doc_field),
             reward_info=tf.float64,
             discount_info=tf.float64,
@@ -188,7 +204,8 @@ def make_env_logger(
     # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
     dataset_config = tfds.rlds.rlds_base.DatasetConfig(
         name=dataset_name,
-        observation_info=from_space_to_feature(env.observation_space, doc_field),
+        observation_info=from_space_to_feature(
+            env.observation_space, doc_field),
         action_info=from_space_to_feature(env.action_space, doc_field),
         reward_info=tf.float64,
         discount_info=tf.float64,

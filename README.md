@@ -66,3 +66,5 @@ env = OXEEnvLogger(
     max_episodes_per_file=500,
 )
 ```
+
+Notes: type casting is very important in the env logger. For example, the defined `action_space` and `observation_space` in the env should be provided/returned as what they are defined. Otherwise, the logger will raise an error. Also, take note of specific types like `float32`/`float64`, `int32`/`int64` etc.
