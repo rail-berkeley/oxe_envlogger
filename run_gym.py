@@ -7,6 +7,7 @@ from absl import app, flags, logging
 import gym
 
 from oxe_envlogger.envlogger import OXEEnvLogger
+from oxe_envlogger.utils import MetadataLogger
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
@@ -21,22 +22,9 @@ flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
 
 ##############################################################################
 
-
 def wrap_env_logger(env: gym.Env):
     """Simple util to wrap gym.Env to dm_env.Environment."""
     logging.info('Wrapping environment with EnvironmentLogger...')
-
-    # This function will be called at every step of the environment.
-    def step_fn(unused_timestep, unused_action, unused_env):
-        return {
-            'timestamp': time.time(),
-        }
-
-    # This function will be called at every episode of the environment.
-    def episode_fn(unused_timestep, unused_action, unused_env):
-        return {
-            'language_embedding': np.random.random((5,)).astype(np.float32),
-        }
 
     # Crude way to use snake case for dataset name
     if "Cheetah" in FLAGS.env_name:
@@ -51,14 +39,19 @@ def wrap_env_logger(env: gym.Env):
     episode_metadata_info = {'language_embedding': tfds.features.Tensor(
         shape=(5,), dtype=tf.float32), }
 
+    metadata_logger = MetadataLogger(
+        step_metadata_info=step_metadata_info,
+        episode_metadata_info=episode_metadata_info,
+    )
+
     # make env logger
     env = OXEEnvLogger(
         env,
         dataset_name=FLAGS.env_name,
         directory=FLAGS.output_dir,
         max_episodes_per_file=500,
-        step_metadata=(step_metadata_info, step_fn),
-        episode_metadata=(episode_metadata_info, episode_fn),
+        step_metadata=metadata_logger.step_ref(),
+        episode_metadata=metadata_logger.episode_ref(),
         doc_field={
             'language_embedding': 'Language embedding for the episode.',
             'timestamp': 'Timestamp for the step.',
@@ -68,7 +61,7 @@ def wrap_env_logger(env: gym.Env):
     )
 
     logging.info('Done wrapping environment with EnvironmentLogger.')
-    return env
+    return env, metadata_logger
 
 ##############################################################################
 
@@ -80,17 +73,27 @@ def main(unused_argv):
     logging.info(f'Done creating {FLAGS.env_name} environment.')
 
     if FLAGS.enable_envlogger:
-        env = wrap_env_logger(env)
+        env, metadata_logger = wrap_env_logger(env)
 
     logging.info('Training an agent for %r episodes...', FLAGS.num_episodes)
 
     for i in range(FLAGS.num_episodes):
+        # example to log episode metadata
+        if FLAGS.enable_envlogger:
+            metadata_logger.log_episode("language_embedding",
+                                        np.random.random((5,)).astype(np.float32))
+
         logging.info('episode %r', i)
         obs, _ = env.reset()
         done = False
 
         while not done:
             action = env.action_space.sample()
+
+            # example to log step metadata
+            if FLAGS.enable_envlogger:
+                metadata_logger.log_step("timestamp", time.time())
+
             obs, reward, _, done, _ = env.step(action)
 
     logging.info(
