@@ -22,13 +22,8 @@ from oxe_envlogger.dm_env import GymReturn, DummyDmEnv, DmEnvWrapper
 example of MetadataInfo:
     step_metadata_info = {'timestamp': tfds.features.Tensor(
         shape=(), dtype=tf.float32, doc="Timestamp for the step.")}
-
-example of MetadataCallback:
-    def step_fn(unused_timestep, unused_action, unused_env):
-        return {'timestamp': time.time(),}
 """
 MetadataInfo = Dict[str, tfds.features.FeatureConnector]
-MetadataCallback = Callable[..., Dict[str, Any]]
 DocField = Dict[str, str]
 
 
@@ -45,10 +40,8 @@ class OXEEnvLogger(gym.Wrapper):
             dataset_name: str,
             directory: str,
             max_episodes_per_file: int,
-            step_metadata: Optional[Tuple[MetadataInfo,
-                                          MetadataCallback]] = None,
-            episode_metadata: Optional[Tuple[MetadataInfo,
-                                             MetadataCallback]] = None,
+            step_metadata_info: Optional[MetadataInfo] = None,
+            episode_metadata_info: Optional[MetadataInfo] = None,
             doc_field: DocField = {},
             version: str = '0.1.0',
     ):
@@ -58,23 +51,18 @@ class OXEEnvLogger(gym.Wrapper):
             env: gym.Env instance
             directory: directory to store the trajectories
             max_episodes_per_file: maximum number of episodes to store in a single file
-            step_metadata: tuple of (step_metadata_info, step_fn)
-            episode_metadata: tuple of (episode_metadata_info, episode_fn)
+            step_metadata_info: description of the step metadata specs
+            episode_metadata_info: description of the episode metadata specs
             doc_field: dict of doc field for the dict tree in obs and action space
             version: version of the dataset
-
-        NOTE: option to use helper class utils.MetadataLogger to log metadata,
-            provide the step_metadata and episode_metadata as follows:
-            step_metadata=metadata_logger.step_ref(),
-            episode_metadata=metadata_logger.episode_ref(),
         """
         super().__init__(env)
         self.dataset_name = dataset_name
         self.directory = directory
         self.max_episodes_per_file = max_episodes_per_file
-        self.step_metadata = step_metadata
-        self.episode_metadata = episode_metadata
         self.version = version
+        self.step_metadata_info = step_metadata_info
+        self.episode_metadata_info = episode_metadata_info
         # this is a hack to pass in kwargs to the step and reset function
         self.step_kwargs = {}
         self.reset_kwargs = {}
@@ -92,19 +80,19 @@ class OXEEnvLogger(gym.Wrapper):
             reset_callback=reset_callback,
         )
 
-        if step_metadata is None:
-            step_metadata_info, step_fn = None, None
-        else:
-            assert len(
-                step_metadata) == 2, "should be a tuple of (step_metadata_info, step_fn)"
-            step_metadata_info, step_fn = step_metadata
+        step_fn = None
+        self.step_metadata_elements = {}
+        if step_metadata_info is not None:
+            def step_fn(timestep, action, env):
+                assert self.step_metadata_elements, "step metadata not set"
+                return self.step_metadata_elements
 
-        if episode_metadata is None:
-            episode_metadata_info, episode_fn = None, None
-        else:
-            assert len(
-                episode_metadata) == 2, "should be a tuple of (episode_metadata_info, episode_fn)"
-            episode_metadata_info, episode_fn = episode_metadata
+        self.episode_metadata_elements = {}
+        episode_fn = None
+        if episode_metadata_info is not None:
+            def episode_fn(timestep, action, env):
+                assert self.episode_metadata_elements, "episode metadata not set"
+                return self.episode_metadata_elements
 
         # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
         self.dataset_config = tfds.rlds.rlds_base.DatasetConfig(
@@ -156,8 +144,35 @@ class OXEEnvLogger(gym.Wrapper):
         self.reset_kwargs = {}
         return GymReturn.convert_reset(val)
 
+    def set_step_metadata(self, metadata: Dict[str, Any]):
+        """
+        Log step metadata, provide a dict of metadata to log
+        NOTE: make sure all defined keys are present
+            :arg metadata dict of metadata to log
+        """
+        assert len(metadata) == len(self.step_metadata_info)
+        assert set(metadata.keys()) == set(self.step_metadata_info.keys())
+        self.step_metadata_elements = metadata
+
+    def set_episode_metadata(self, metadata: Dict[str, Any]):
+        """
+        Log episode metadata, provide a dict of metadata to log
+        NOTE: make sure all the defined keys are present
+            :arg metadata dict of metadata to log
+        """
+        assert len(metadata) == len(self.episode_metadata_info)
+        assert set(metadata.keys()) == set(self.episode_metadata_info.keys())
+        self.episode_metadata_elements = metadata
+
 
 ##############################################################################
+"""
+example of MetadataCallback:
+    def step_fn(unused_timestep, unused_action, unused_env):
+        return {'timestamp': time.time(),}
+"""
+MetadataCallback = Callable[..., Dict[str, Any]]
+
 
 def make_env_logger(
     env: DmEnvWrapper,

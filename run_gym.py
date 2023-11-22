@@ -7,7 +7,6 @@ from absl import app, flags, logging
 import gym
 
 from oxe_envlogger.envlogger import OXEEnvLogger
-from oxe_envlogger.utils import MetadataLogger
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
@@ -37,12 +36,9 @@ def wrap_env_logger(env: gym.Env):
                                                             dtype=tf.float32,
                                                             doc="Timestamp for the step.")}
     episode_metadata_info = {'language_embedding': tfds.features.Tensor(
-        shape=(5,), dtype=tf.float32), }
-
-    metadata_logger = MetadataLogger(
-        step_metadata_info=step_metadata_info,
-        episode_metadata_info=episode_metadata_info,
-    )
+        shape=(5,),
+        dtype=tf.float32,
+        doc="Language embedding for the episode.")}
 
     # make env logger
     env = OXEEnvLogger(
@@ -50,18 +46,16 @@ def wrap_env_logger(env: gym.Env):
         dataset_name=FLAGS.env_name,
         directory=FLAGS.output_dir,
         max_episodes_per_file=500,
-        step_metadata=metadata_logger.step_ref(),
-        episode_metadata=metadata_logger.episode_ref(),
+        step_metadata_info=step_metadata_info,
+        episode_metadata_info=episode_metadata_info,
         doc_field={
-            'language_embedding': 'Language embedding for the episode.',
-            'timestamp': 'Timestamp for the step.',
             "proprio": "Proprioception of the robot arm.",
             "image_0": "RGB image from the camera.",
         },
     )
 
     logging.info('Done wrapping environment with EnvironmentLogger.')
-    return env, metadata_logger
+    return env
 
 ##############################################################################
 
@@ -73,15 +67,18 @@ def main(unused_argv):
     logging.info(f'Done creating {FLAGS.env_name} environment.')
 
     if FLAGS.enable_envlogger:
-        env, metadata_logger = wrap_env_logger(env)
+        env = wrap_env_logger(env)
 
     logging.info('Training an agent for %r episodes...', FLAGS.num_episodes)
 
     for i in range(FLAGS.num_episodes):
-        # example to log episode metadata
+
+        # example to log custom metadata during new episode
         if FLAGS.enable_envlogger:
-            metadata_logger.log_episode("language_embedding",
-                                        np.random.random((5,)).astype(np.float32))
+            env.set_episode_metadata({
+                "language_embedding": np.random.random((5,)).astype(np.float32)
+            })
+            env.set_step_metadata({"timestamp": time.time()})
 
         logging.info('episode %r', i)
         obs, _ = env.reset()
@@ -90,9 +87,9 @@ def main(unused_argv):
         while not done:
             action = env.action_space.sample()
 
-            # example to log step metadata
+            # example to log custom step metadata
             if FLAGS.enable_envlogger:
-                metadata_logger.log_step("timestamp", time.time())
+                env.set_step_metadata({"timestamp": time.time()})
 
             obs, reward, _, done, _ = env.step(action)
 
