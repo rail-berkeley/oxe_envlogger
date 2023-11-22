@@ -150,7 +150,8 @@ class OXEEnvLogger(gym.Wrapper):
         NOTE: make sure all defined keys are present
             :arg metadata dict of metadata to log
         """
-        assert len(metadata) == len(self.step_metadata_info)
+        assert len(metadata) == len(
+            self.step_metadata_info), "metadata definition mismatch"
         assert set(metadata.keys()) == set(self.step_metadata_info.keys())
         self.step_metadata_elements = metadata
 
@@ -160,12 +161,14 @@ class OXEEnvLogger(gym.Wrapper):
         NOTE: make sure all the defined keys are present
             :arg metadata dict of metadata to log
         """
-        assert len(metadata) == len(self.episode_metadata_info)
+        assert len(metadata) == len(
+            self.episode_metadata_info), "metadata definition mismatch"
         assert set(metadata.keys()) == set(self.episode_metadata_info.keys())
         self.episode_metadata_elements = metadata
 
 
 ##############################################################################
+
 """
 example of MetadataCallback:
     def step_fn(unused_timestep, unused_action, unused_env):
