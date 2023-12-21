@@ -5,7 +5,31 @@ import gym
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from dm_env import specs
-from typing import Dict
+from typing import Dict, Any
+
+
+def get_gym_spaces(data_sample: Any) -> gym.spaces.Space:
+    """
+    Get the data type as Gym space of a provided data sample.
+    This function currently only supports common types like Box and Dict type.
+
+    :Args:  data_sample (Any): The data sample to be converted.
+    :Returns:   gym.spaces.Space
+    """
+    # Case for numerical data (numpy arrays, lists of numbers, etc.)
+    if isinstance(data_sample, (np.ndarray, list, tuple)):
+        # Ensure it's a numpy array to get shape and dtype
+        data_sample = np.array(data_sample)
+        return gym.spaces.Box(low=-np.inf, high=np.inf,
+                              shape=data_sample.shape, dtype=data_sample.dtype)
+
+    # Case for dictionary data
+    elif isinstance(data_sample, dict):
+        # Recursively convert each item in the dictionary
+        return gym.spaces.Dict({key: get_gym_spaces(value)
+                                for key, value in data_sample.items()})
+    else:
+        raise TypeError("Unsupported data type for Gym spaces conversion.")
 
 
 def from_space_to_feature(space_def: gym.Space,

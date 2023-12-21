@@ -67,6 +67,11 @@ class OXEEnvLogger(gym.Wrapper):
         self.step_kwargs = {}
         self.reset_kwargs = {}
 
+        # check if directory exists else create it
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Create new directory: {directory}")
+
         def step_callback(action):
             return self.env.step(action, **self.step_kwargs)
 

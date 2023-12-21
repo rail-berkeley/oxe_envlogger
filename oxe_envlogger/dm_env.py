@@ -76,7 +76,16 @@ class DummyDmEnv():
     def step(self, action) -> dm_env.TimeStep:
         # Note that dm_env.step doesn't accept additional arguments
         val = self.step_callback(action)
-        obs, reward, terminate, truncate, info = val
+        # NOTE: to support previous version fo gym api where it doesnt
+        # return truncate and terminate.
+        # https://github.com/openai/gym/releases/tag/0.26.0
+        if len(val) == 5:
+            obs, reward, terminate, truncate, info = val
+        else:
+            obs, reward, done, info = val
+            terminate = done
+            truncate = False  # NOTE: truncate is not supported in gym<0.26.0
+
         reward = float(reward)
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
@@ -88,7 +97,11 @@ class DummyDmEnv():
 
     def reset(self) -> dm_env.TimeStep:
         # Note that dm_env.reset doesn't accept additional arguments
-        obs, _ = self.reset_callback()
+        obs = self.reset_callback()
+        # NOTE: api change in gym 0.26.0
+        # https://github.com/openai/gym/releases/tag/0.26.0
+        if isinstance(obs, tuple):
+            obs, info = obs
         ts = dm_env.restart(obs)
         return ts
 
@@ -111,6 +124,7 @@ class DummyDmEnv():
             dtype=np.float64,
             name='discount',
         )
+
 
 class DmEnvWrapper(gym.Wrapper):
     """
