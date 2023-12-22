@@ -7,7 +7,7 @@ import dm_env
 from dm_env import specs
 
 from typing import Any, Dict, List, Tuple, Callable
-from oxe_envlogger.data_type import from_space_to_spec
+from oxe_envlogger.data_type import from_space_to_spec, enforce_type_consistency
 
 
 class GymReturn:
@@ -20,7 +20,7 @@ class GymReturn:
     def convert_step(val: Any) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """
         This function ensures that the return value of gym.Env.step is consistent
-        :arg val either a dm_env.TimeStep or a tuple of (obs, reward, truncate, terminate, info)
+        :param  val either a dm_env.TimeStep or a tuple of (obs, reward, truncate, terminate, info)
         :return obs, reward, truncate, terminate, info
         """
         if isinstance(val, dm_env.TimeStep):
@@ -57,8 +57,8 @@ class DummyDmEnv():
     """
 
     def __init__(self,
-                 observation_space,
-                 action_space,
+                 observation_space: gym.Space,
+                 action_space: gym.Space,
                  step_callback: Callable,
                  reset_callback: Callable,
                  ):
@@ -86,7 +86,10 @@ class DummyDmEnv():
             terminate = done
             truncate = False  # NOTE: truncate is not supported in gym<0.26.0
 
+        # ensure type consistency
         reward = float(reward)
+        obs = enforce_type_consistency(self.observation_space, obs)
+
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
         elif truncate:
@@ -98,10 +101,12 @@ class DummyDmEnv():
     def reset(self) -> dm_env.TimeStep:
         # Note that dm_env.reset doesn't accept additional arguments
         obs = self.reset_callback()
+
         # NOTE: api change in gym 0.26.0
         # https://github.com/openai/gym/releases/tag/0.26.0
         if isinstance(obs, tuple):
             obs, info = obs
+        obs = enforce_type_consistency(self.observation_space, obs)
         ts = dm_env.restart(obs)
         return ts
 

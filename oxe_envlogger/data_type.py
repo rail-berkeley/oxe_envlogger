@@ -8,7 +8,7 @@ from dm_env import specs
 from typing import Dict, Any
 
 
-def get_gym_spaces(data_sample: Any) -> gym.spaces.Space:
+def get_gym_space(data_sample: Any) -> gym.spaces.Space:
     """
     Get the data type as Gym space of a provided data sample.
     This function currently only supports common types like Box and Dict type.
@@ -26,7 +26,7 @@ def get_gym_spaces(data_sample: Any) -> gym.spaces.Space:
     # Case for dictionary data
     elif isinstance(data_sample, dict):
         # Recursively convert each item in the dictionary
-        return gym.spaces.Dict({key: get_gym_spaces(value)
+        return gym.spaces.Dict({key: get_gym_space(value)
                                 for key, value in data_sample.items()})
     else:
         raise TypeError("Unsupported data type for Gym spaces conversion.")
@@ -101,3 +101,16 @@ def populate_docs(dataset_config: tfds.rlds.rlds_base.DatasetConfig,
         doc = tfds.features.Documentation(desc=doc_field["discount"])
         dataset_config.discount_info._doc = doc
     return dataset_config
+
+
+def enforce_type_consistency(space: gym.Space, data: Any) -> Any:
+    """
+    Enforce type consistency between the data and the space
+    """
+    if isinstance(space, gym.spaces.Dict):
+        for key, space in space.spaces.items():
+            data[key] = enforce_type_consistency(space, data[key])
+    else:
+        assert space.shape == data.shape, f" mismatch shape"
+        data = data.astype(space.dtype)
+    return data

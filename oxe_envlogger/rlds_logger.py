@@ -2,12 +2,12 @@
 
 import dm_env
 from envlogger import step_data
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from envlogger.backends import tfds_backend_writer
-from oxe_envlogger.data_type import from_space_to_feature, populate_docs
+from oxe_envlogger.data_type import from_space_to_feature, populate_docs, enforce_type_consistency
 
 import gym
 import os
@@ -37,6 +37,7 @@ class RLDSLogger:
             dataset_name: str,
             directory: str,
             max_episodes_per_file: int,
+            max_steps_per_episode: Optional[int] = None,
             doc_field: DocField = {},
             version: str = '0.1.0',
     ):
@@ -47,6 +48,7 @@ class RLDSLogger:
             action_space: gym action space
             directory: directory to store the trajectories
             max_episodes_per_file: maximum number of episodes to store in a single file
+            max_steps_per_episode: maximum number of steps per episode, default to None
             doc_field: dict of doc field for the dict tree in obs and action space
             version: version of the dataset
         """
@@ -54,6 +56,10 @@ class RLDSLogger:
         self.directory = directory
         self.max_episodes_per_file = max_episodes_per_file
         self.version = version
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.max_steps_per_episode = max_steps_per_episode
+        self._curr_steps = 0
 
         # check if directory exists else create it
         if not os.path.exists(directory):
@@ -96,6 +102,11 @@ class RLDSLogger:
             reward: gym reward
             step_type: gym step type defined in RLDSStepType
         """
+        # explicitly enforce type consistency
+        obs = enforce_type_consistency(self.observation_space, obs)
+        action = enforce_type_consistency(self.action_space, action)
+        reward = float(reward) # ensure reward is float
+
         # record step
         if step_type == RLDSStepType.TERMINATION:
             ts = dm_env.termination(reward=reward, observation=obs)
@@ -108,6 +119,14 @@ class RLDSLogger:
         else:
             raise NotImplementedError
 
+        self._curr_steps += 1
+        if self.max_steps_per_episode and \
+            self._curr_steps >= self.max_steps_per_episode:
+            # we will restart the episode if user
+            # specifies max_steps_per_episode
+            step_type = RLDSStepType.RESTART
+            self._curr_steps = 0
+
         self.writer.record_step(
             step_data.StepData(
                 timestep=ts,
@@ -117,4 +136,13 @@ class RLDSLogger:
         )
 
     def close(self):
-        self.writer.close()
+        # flush the writer
+        # manually close the writer
+        if hasattr(self, 'writer'):
+            self.writer._write_and_reset_episode()
+            self.writer._sequential_writer.close_all()
+            del self.writer
+
+    def __del__(self):
+        # TODO: early termination of writer wont export the dataset
+        self.close()
