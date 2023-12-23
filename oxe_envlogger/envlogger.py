@@ -122,6 +122,7 @@ class OXEEnvLogger(gym.Wrapper):
             max_episodes_per_file=max_episodes_per_file,
             ds_config=self.dataset_config,
             version=version,
+            store_ds_metadata=True,
         )
         self.dm_env = envlogger.EnvLogger(self.dm_env,
                                           step_fn=step_fn,
