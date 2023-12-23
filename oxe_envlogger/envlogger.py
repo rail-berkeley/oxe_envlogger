@@ -11,7 +11,7 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 
 from typing import Any, Dict, List, Tuple, Optional, Callable
-from oxe_envlogger.data_type import from_space_to_feature, populate_docs
+from oxe_envlogger.data_type import from_space_to_feature, populate_docs, enforce_type_consistency
 from oxe_envlogger.dm_env import GymReturn, DummyDmEnv, DmEnvWrapper
 
 # Define MetadataInfo and MetadataCallback types
@@ -67,7 +67,13 @@ class OXEEnvLogger(gym.Wrapper):
         self.step_kwargs = {}
         self.reset_kwargs = {}
 
+        # check if directory exists else create it
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Create new directory: {directory}")
+
         def step_callback(action):
+            action = enforce_type_consistency(env.action_space, action)
             return self.env.step(action, **self.step_kwargs)
 
         def reset_callback():
@@ -116,6 +122,7 @@ class OXEEnvLogger(gym.Wrapper):
             max_episodes_per_file=max_episodes_per_file,
             ds_config=self.dataset_config,
             version=version,
+            store_ds_metadata=True,
         )
         self.dm_env = envlogger.EnvLogger(self.dm_env,
                                           step_fn=step_fn,

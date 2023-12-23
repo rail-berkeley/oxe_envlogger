@@ -25,12 +25,6 @@ def wrap_env_logger(env: gym.Env):
     """Simple util to wrap gym.Env to dm_env.Environment."""
     logging.info('Wrapping environment with EnvironmentLogger...')
 
-    # Crude way to use snake case for dataset name
-    if "Cheetah" in FLAGS.env_name:
-        dataset_name = "half_cheetah"
-    else:
-        dataset_name = FLAGS.env_name
-
     # Define tuple of MetadataInfo and MetadataCallback
     step_metadata_info = {'timestamp': tfds.features.Tensor(shape=(),
                                                             dtype=tf.float32,

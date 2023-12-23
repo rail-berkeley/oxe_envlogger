@@ -67,4 +67,31 @@ env = OXEEnvLogger(
 )
 ```
 
+Or, you can use the RLDSLogger to log the data manually. For more detailed example, check `tests/log_rlds.py`
+
+```py
+import numpy as np
+from oxe_envlogger.data_type import get_gym_space
+from oxe_envlogger.rlds_logger import RLDSLogger, RLDSStepType
+
+# 0. sample data
+obs_sample = {"state1": np.array([4, 5, 6]), "state2": np.array([1, 2, 3]),}
+action_sample = np.array([0, 1, 2, 4])
+
+# 1. Create RLDSLogger
+logger = RLDSLogger(
+        observation_space=get_gym_space(obs_sample),
+        action_space=get_gym_space(action_sample),
+        dataset_name="test",
+        directory="logs",
+        max_episodes_per_file=1,
+)
+
+# 2. log data
+logger(action_sample, obs_sample, 1.0, step_type=RLDSStepType.RESTART)
+logger(action_sample, obs_sample, 1.0)
+logger(action_sample, obs_sample, 1.0, step_type=RLDSStepType.TERMINATION)
+logger.close() # this is important to flush the current data to disk
+```
+
 Notes: type casting is very important in the env logger. For example, the defined `action_space` and `observation_space` in the env should be provided/returned as what they are defined. Otherwise, the logger will raise an error. Also, take note of specific types like `float32`/`float64`, `int32`/`int64` etc.
