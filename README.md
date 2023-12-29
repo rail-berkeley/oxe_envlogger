@@ -53,7 +53,27 @@ python load_example_oxe.py
 
 ## Usage
 
-Just add the following lines to your code to wrap your env with the logger. For more detailed example, check `run_gym.py`
+It is extremely easy to use `OXEEnvLogger`. Just add the following lines to your code to wrap your env with the logger. For more detailed example, check `tests/log_env.py` or `run_gym.py`.
+
+**1. AutoOXEEnvLogger** (with type introspection)
+
+```py
+from oxe_envlogger.envlogger import AutoOXEEnvLogger
+
+env = YOUR_GYM_ENV
+env = AutoOXEEnvLogger(
+    env,
+    YOUR_DATASET_NAME,
+)
+```
+
+The above code will automatically obtain the observation and action space from the env, and also support custom metadata. The optimal shard size is 
+automatically calculated based on the first episode. Use `set_step_metadata()` and `set_episode_metadata()` to set the metadata for each step and episode respectively. Log is saved in `logs/YOUR_DATASET_NAME` by default.
+
+**2. OXEEnvLogger** (without type introspection)
+
+For more fine-grained type casting of the data, use `OXEEnvLogger`. This requires
+the correct type cast of `self.action_space` and `self.observation_space` in the gym.env class.
 
 ```py
 from oxe_envlogger.envlogger import OXEEnvLogger
@@ -64,8 +84,12 @@ env = OXEEnvLogger(
     YOUR_DATASET_NAME,
     directory=YOUR_OUTPUT_DIR
     max_episodes_per_file=500,
+    # step_metadata_info=YOUR_METADATA, # optional
+    # episode_metadata_info=YOUR_METADATA, # optional
 )
 ```
+
+**3. RLDSLogger**
 
 Or, you can use the RLDSLogger to log the data manually. For more detailed example, check `tests/log_rlds.py`
 

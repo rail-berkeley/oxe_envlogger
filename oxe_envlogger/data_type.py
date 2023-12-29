@@ -28,8 +28,30 @@ def get_gym_space(data_sample: Any) -> gym.spaces.Space:
         # Recursively convert each item in the dictionary
         return gym.spaces.Dict({key: get_gym_space(value)
                                 for key, value in data_sample.items()})
+    elif isinstance(data_sample, (int, float, str)):
+        return gym.spaces.Discrete(1)
     else:
         raise TypeError("Unsupported data type for Gym spaces conversion.")
+
+
+def get_tfds_feature(data_sample: Any) -> tfds.features.FeatureConnector:
+    """
+    Get the data type as tfds feature of a provided data sample.
+    Similar to the get_gym_space function above
+    """
+    if isinstance(data_sample, (np.ndarray, list, tuple)):
+        data_sample = np.array(data_sample)
+        return tfds.features.Tensor(shape=data_sample.shape,
+                                    dtype=data_sample.dtype)
+    elif isinstance(data_sample, dict):
+        return tfds.features.FeaturesDict({key: get_tfds_feature(value)
+                                           for key, value in data_sample.items()})
+    elif isinstance(data_sample, (int, np.int32, np.int64)):
+        return tfds.features.Tensor(shape=(), dtype=tf.int64)
+    elif isinstance(data_sample, (float, np.float32, np.float64)):
+        return tfds.features.Tensor(shape=(), dtype=tf.float64)
+    else:
+        raise TypeError(f"Unsupported data type for tfds features conversion, {type(data_sample)}")
 
 
 def from_space_to_feature(space_def: gym.Space,
@@ -111,6 +133,8 @@ def enforce_type_consistency(space: gym.Space, data: Any) -> Any:
         for key, space in space.spaces.items():
             data[key] = enforce_type_consistency(space, data[key])
     else:
+        if not isinstance(data, np.ndarray): # might want to not convert to np array
+            data = np.array(data, dtype=space.dtype)
         assert space.shape == data.shape, f" mismatch shape"
         data = data.astype(space.dtype)
     return data

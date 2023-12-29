@@ -15,7 +15,7 @@ def main(_):
     logger = RLDSLogger(
         observation_space=get_gym_space(obs_sample),
         action_space=get_gym_space(action_sample),
-        dataset_name="test",
+        dataset_name="test_rlds",
         directory="logs",
         max_episodes_per_file=1,
     )

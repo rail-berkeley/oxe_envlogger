@@ -16,7 +16,7 @@ flags.DEFINE_integer('num_episodes', 10, 'Number of episodes to log.')
 flags.DEFINE_string('output_dir', 'datasets/',
                     'Path in a filesystem to record trajectories.')
 flags.DEFINE_string('env_name', 'CartPole-v1', 'Name of the environment.')
-flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
+flags.DEFINE_boolean('enable_envlogger', True, 'Enable envlogger.')
 
 
 ##############################################################################
