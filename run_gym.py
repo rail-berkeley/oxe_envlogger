@@ -27,11 +27,11 @@ def wrap_env_logger(env: gym.Env):
 
     # Define tuple of MetadataInfo and MetadataCallback
     step_metadata_info = {'timestamp': tfds.features.Tensor(shape=(),
-                                                            dtype=tf.float32,
+                                                            dtype=np.float32,
                                                             doc="Timestamp for the step.")}
     episode_metadata_info = {'language_embedding': tfds.features.Tensor(
         shape=(5,),
-        dtype=tf.float32,
+        dtype=np.float32,
         doc="Language embedding for the episode.")}
 
     # make env logger

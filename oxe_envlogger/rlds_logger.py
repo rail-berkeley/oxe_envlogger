@@ -11,7 +11,7 @@ from oxe_envlogger.data_type import from_space_to_feature, populate_docs, enforc
 
 import gym
 import os
-import enum
+import numpy as np
 
 MetadataInfo = Dict[str, tfds.features.FeatureConnector]
 DocField = Dict[str, str]
@@ -72,8 +72,8 @@ class RLDSLogger:
             observation_info=from_space_to_feature(
                 observation_space, doc_field),
             action_info=from_space_to_feature(action_space, doc_field),
-            reward_info=tf.float64,
-            discount_info=tf.float64,
+            reward_info=np.float64,
+            discount_info=np.float64,
             version=version,
         )
 
@@ -144,5 +144,5 @@ class RLDSLogger:
             del self.writer
 
     def __del__(self):
-        # TODO: early termination of writer wont export the dataset
+        # NOTE: early termination of writer wont export the dataset
         self.close()

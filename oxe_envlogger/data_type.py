@@ -47,9 +47,9 @@ def get_tfds_feature(data_sample: Any) -> tfds.features.FeatureConnector:
         return tfds.features.FeaturesDict({key: get_tfds_feature(value)
                                            for key, value in data_sample.items()})
     elif isinstance(data_sample, (int, np.int32, np.int64)):
-        return tfds.features.Tensor(shape=(), dtype=tf.int64)
+        return tfds.features.Tensor(shape=(), dtype=np.int64)
     elif isinstance(data_sample, (float, np.float32, np.float64)):
-        return tfds.features.Tensor(shape=(), dtype=tf.float64)
+        return tfds.features.Tensor(shape=(), dtype=np.float64)
     else:
         raise TypeError(f"Unsupported data type for tfds features conversion, {type(data_sample)}")
 

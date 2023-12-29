@@ -11,9 +11,9 @@ from envlogger.backends import tfds_backend_writer
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
-from typing import Any, Dict, List, Tuple, Optional, Callable
-from oxe_envlogger.data_type import from_space_to_feature, populate_docs, enforce_type_consistency
-from oxe_envlogger.dm_env import GymReturn, DummyDmEnv, DmEnvWrapper
+from typing import Any, Dict, Tuple, Optional
+from oxe_envlogger.data_type import from_space_to_feature, populate_docs
+from oxe_envlogger.dm_env import GymReturn, DummyDmEnv
 from abc import ABC, abstractmethod
 
 
@@ -132,8 +132,8 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             observation_info=from_space_to_feature(
                 env.observation_space, doc_field),
             action_info=from_space_to_feature(env.action_space, doc_field),
-            reward_info=tf.float64,
-            discount_info=tf.float64,
+            reward_info=np.float64,
+            discount_info=np.float64,
             step_metadata_info=step_metadata_info,
             episode_metadata_info=episode_metadata_info,
             version=version,
@@ -203,6 +203,7 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
     first episode.
     NOTE: the first episode is discarded to initialize the logger.
     """
+
     def __init__(
             self,
             env: gym.Env,
@@ -276,8 +277,8 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             name=self.dataset_name,
             observation_info=observation_info,
             action_info=action_info,
-            reward_info=tf.float64,
-            discount_info=tf.float64,
+            reward_info=np.float64,
+            discount_info=np.float64,
             step_metadata_info=step_metadata_info,
             episode_metadata_info=episode_metadata_info,
             version=self.default_version,
@@ -357,85 +358,3 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
 
     def close(self):
         self.dm_env.close()
-
-##############################################################################
-
-
-"""
-example of MetadataCallback:
-    def step_fn(unused_timestep, unused_action, unused_env):
-        return {'timestamp': time.time(),}
-"""
-MetadataCallback = Callable[..., Dict[str, Any]]
-
-
-def make_env_logger(
-    env: DmEnvWrapper,
-    dataset_name: str,
-    directory: str,
-    max_episodes_per_file: int,
-    step_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,
-    episode_metadata: Optional[Tuple[MetadataInfo, MetadataCallback]] = None,
-    version: str = '0.1.0',
-    doc_field: DocField = {},
-) -> DmEnvWrapper:
-    """
-    NOTE: the env here is dm_env.Environment, not gym.Env
-    This provides a flexible way to enable logging for dm_env.Environment.
-
-    Usage: 
-        env = DmEnvWrapper(env)
-        env = make_env_logger(
-            env,
-            dataset_name,
-            directory=FLAGS.output_dir,
-            max_episodes_per_file=500,
-            step_metadata=step_metadata,
-            episode_metadata=episode_metadata,
-        )
-    """
-    # ensure directory exists
-    assert os.path.exists(directory), f"{directory} does not exist"
-
-    if step_metadata is None:
-        step_metadata_info, step_fn = None, None
-    else:
-        assert len(
-            step_metadata) == 2, "should be a tuple of (step_metadata_info, step_fn)"
-        step_metadata_info, step_fn = step_metadata
-
-    if episode_metadata is None:
-        episode_metadata_info, episode_fn = None, None
-    else:
-        assert len(
-            episode_metadata) == 2, "should be a tuple of (episode_metadata_info, episode_fn)"
-        episode_metadata_info, episode_fn = episode_metadata
-
-    # https://github.com/tensorflow/datasets/blob/master/tensorflow_datasets/rlds/rlds_base.py
-    dataset_config = tfds.rlds.rlds_base.DatasetConfig(
-        name=dataset_name,
-        observation_info=from_space_to_feature(
-            env.observation_space, doc_field),
-        action_info=from_space_to_feature(env.action_space, doc_field),
-        reward_info=tf.float64,
-        discount_info=tf.float64,
-        step_metadata_info=step_metadata_info,
-        episode_metadata_info=episode_metadata_info,
-        version=version,
-    )
-
-    dataset_config = populate_docs(dataset_config, doc_field=doc_field)
-
-    writer = tfds_backend_writer.TFDSBackendWriter(
-        data_directory=directory,
-        split_name='train',
-        max_episodes_per_file=max_episodes_per_file,
-        ds_config=dataset_config,
-        version=version,
-    )
-    env = envlogger.EnvLogger(env,
-                              step_fn=step_fn,
-                              episode_fn=episode_fn,
-                              backend=writer,
-                              )
-    return env
