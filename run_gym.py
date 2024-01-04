@@ -16,7 +16,7 @@ flags.DEFINE_integer('num_episodes', 10, 'Number of episodes to log.')
 flags.DEFINE_string('output_dir', 'datasets/',
                     'Path in a filesystem to record trajectories.')
 flags.DEFINE_string('env_name', 'CartPole-v1', 'Name of the environment.')
-flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
+flags.DEFINE_boolean('enable_envlogger', True, 'Enable envlogger.')
 
 
 ##############################################################################
@@ -27,11 +27,11 @@ def wrap_env_logger(env: gym.Env):
 
     # Define tuple of MetadataInfo and MetadataCallback
     step_metadata_info = {'timestamp': tfds.features.Tensor(shape=(),
-                                                            dtype=tf.float32,
+                                                            dtype=np.float32,
                                                             doc="Timestamp for the step.")}
     episode_metadata_info = {'language_embedding': tfds.features.Tensor(
         shape=(5,),
-        dtype=tf.float32,
+        dtype=np.float32,
         doc="Language embedding for the episode.")}
 
     # make env logger

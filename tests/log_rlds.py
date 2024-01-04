@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+
 import tensorflow_datasets as tfds
 from oxe_envlogger.data_type import get_gym_space
 from oxe_envlogger.rlds_logger import RLDSLogger, RLDSStepType
 import numpy as np
-from absl import app, flags, logging
+from absl import app
 
 def main(_):
     obs_sample = {
@@ -15,7 +17,7 @@ def main(_):
     logger = RLDSLogger(
         observation_space=get_gym_space(obs_sample),
         action_space=get_gym_space(action_sample),
-        dataset_name="test",
+        dataset_name="test_rlds",
         directory="logs",
         max_episodes_per_file=1,
     )
