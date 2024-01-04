@@ -201,7 +201,6 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
     the observation, action, metadata specs from the gym.Env instance.
     The optimal size of shards is automatically calculated based on the 
     first episode.
-    NOTE: the first episode is discarded to initialize the logger.
     """
 
     def __init__(
@@ -231,8 +230,9 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             print(f"Create new directory: {directory}")
         self.directory = directory
 
-        self._internal_episode_count = 0
+        self.has_init_logger = False
         self._temp_init_step_data = []
+        self._temp_init_episode_data = []
         self.default_version = '0.1.0'
         self.optimal_shard_size = optimal_shard_size
         self.step_metadata_elements = {}
@@ -243,6 +243,7 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
         This function is called when the first episode is observed.
         It creates the metadata specs and the tfrecord writer.
         """
+        print(self._temp_init_step_data[0])
         print_yellow("Initializing logger...")
         # convert to mb
         epi_size = (
@@ -263,12 +264,11 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
         first_step_data = self._temp_init_step_data[0]
         observation_info = get_tfds_feature(first_step_data['obs'])
         action_info = get_tfds_feature(first_step_data['action'])
-        step_metadata_info = first_step_data['metadata']
-        episode_metadata_info = self.episode_metadata_elements
-        for key, value in step_metadata_info.items():
-            step_metadata_info[key] = get_tfds_feature(value)
-        for key, value in episode_metadata_info.items():
-            episode_metadata_info[key] = get_tfds_feature(value)
+
+        step_metadata_info = {key: get_tfds_feature(value)
+                              for key, value in first_step_data['metadata'].items()}
+        episode_metadata_info = {key: get_tfds_feature(value)
+                                 for key, value in self.episode_metadata_elements.items()}
 
         # TODO: check consistency within the step data, else throw error
 
@@ -311,42 +311,91 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
                                           backend=writer
                                           )
 
-        # TODO maybe dont discard the first episode and manually log it
-        self._temp_init_step_data = None  # clear temp memory
-        print_yellow("Done initializing logger.")
+    def _save_first_episode(self):
+        """
+        This is an internal function that saves the stored first episode
+        after the logger is initialized.
+        NOTE: this saves the entire first episode, and the first step of the
+                second episode. (when reset() called twice)
+        """
+        print_yellow("Saving first episode...")
+        assert len(self._temp_init_episode_data) == 2, "triggered only during 2nd reset()"
+
+        # Helper function to save episode
+        def save_episode(episode_data, step_data_list=None):
+            self.episode_metadata_elements = episode_data['episode_metadata']
+            self.step_metadata_elements = episode_data['step_metadata']
+            self.dm_env.custom_reset_env_callback = episode_data['obs']
+            self.dm_env.reset()
+
+            if not step_data_list:
+                return
+
+            for _data in step_data_list:
+                self.step_metadata_elements = _data['metadata']
+                self.dm_env.custom_step_env_callback = lambda action: (
+                    _data['obs'], _data['reward'], _data['terminate'], _data['truncate']
+                )
+                self.dm_env.step(_data['action'])
+
+        # save the first episode and its trajectory
+        save_episode(self._temp_init_episode_data[0], self._temp_init_step_data)
+
+        # save the first step of the second episode
+        save_episode(self._temp_init_episode_data[1])
+
+        # Reset environment callbacks and clear temporary data
+        self.dm_env.custom_step_env_callback = None
+        self.dm_env.custom_reset_env_callback = None
+        self._temp_init_step_data = None
+        self._temp_init_episode_data = None
+
+        print_yellow("Done saving first episode.")
 
     def reset(self, **kwargs):
         """Refer to abstract method in EnvLoggerBase"""
-        if self._internal_episode_count < 2:  # when init
-            if self._internal_episode_count == 0:
+        if not self.has_init_logger:
+            obs = self.env.reset(**kwargs)
+            self._temp_init_episode_data.append(
+                dict(
+                    obs=obs,
+                    episode_metadata=self.episode_metadata_elements.copy(),
+                    step_metadata=self.step_metadata_elements.copy(),
+                )
+            )
+            if len(self._temp_init_episode_data) < 2:
                 print("collecting first episode to initialize logger...")
-                self._internal_episode_count += 1
-                return self.env.reset(**kwargs)
-            elif self._internal_episode_count == 1:
+            else:
                 self.__init_logger()
-                self._internal_episode_count += 1
-                # NOTE: would need to log this 2nd reset
-        val = self.dm_env.reset(**kwargs)
+                self._save_first_episode()
+                self.has_init_logger = True
+                print_yellow("Done initializing logger.")
+            return obs
+        # Normal mode after init
+        self.dm_env.reset_kwargs = kwargs  # experimental
+        val = self.dm_env.reset()
+        self.dm_env.reset_kwargs = {} # reset custom kwargs
         return GymReturn.convert_reset(val)
 
     def step(self, action, **kwargs):
         """Refer to abstract method in EnvLoggerBase"""
-        if self._internal_episode_count < 2:  # when init
+        if not self.has_init_logger:
             ret_tuple = self.env.step(action, **kwargs)
             self._temp_init_step_data.append(
                 dict(
                     obs=ret_tuple[0],
                     action=action,
-                    metadata=self.step_metadata_elements,
+                    metadata=self.step_metadata_elements.copy(),
                     reward=ret_tuple[1],
                     terminate=ret_tuple[2],
                     truncate=ret_tuple[3],
                 )
             )
             return ret_tuple
-        else:
-            val = self.dm_env.step(action, **kwargs)
-            return GymReturn.convert_step(val)
+        self.dm_env.step_kwargs = kwargs  # experimental
+        val = self.dm_env.step(action)
+        self.dm_env.step_kwargs = {} # reset custom kwargs
+        return GymReturn.convert_step(val)
 
     def set_step_metadata(self, metadata: Dict[str, Any]):
         """Refer to abstract method in EnvLoggerBase"""

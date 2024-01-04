@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import tensorflow_datasets as tfds
 from oxe_envlogger.envlogger import OXEEnvLogger, AutoOXEEnvLogger
 
@@ -13,7 +15,7 @@ def main(auto_logger=False):
     print("## Testing with auto_logger: ", auto_logger)
 
     env = gym.make("CartPole-v1")
-    
+
     # generate a random name for the dataset
     random_name_suffix = np.random.randint(1000)
     ds_name = f"test_env_{random_name_suffix}"
@@ -44,14 +46,20 @@ def main(auto_logger=False):
 
     print("Done setting up logger")
 
-    for i in range(3):
+    num_of_episodes = 3
+    for i in range(num_of_episodes):
         env.set_episode_metadata({"language_embedding": np.random.rand(5).astype(np.float32)})
         env.set_step_metadata({"timestamp": time.time()})
         print("episode", i)
-        env.reset()
+        env.reset(seed=i)
+
         for i in range(10):
             env.set_step_metadata({"timestamp": time.time()})
-            env.step(env.action_space.sample())
+            obs, reward, done, trunc, info = env.step(env.action_space.sample())
+            # print(obs, reward, done, trunc, info)
+
+            if done or trunc:
+                break
 
     env.close()  # explicitly close the env logger to flush the data to disk
 
@@ -66,17 +74,16 @@ def main(auto_logger=False):
 
     assert ds_builder.info.name == ds_name, f"dataset name should be {ds_name}"
 
-    num_of_episodes = 2 if auto_logger else 3
-
     # print len of dataset
     print("size of dataset", len(list(dataset)))
-    assert len(list(dataset)) == num_of_episodes, f"There should be {num_of_episodes} episodes in the dataset"
+    assert len(list(dataset)) == num_of_episodes, f"There should be 3 episodes in the dataset"
 
     for episode in dataset.take(num_of_episodes):  # Take only the first episode for demonstration
         steps = episode['steps']
 
         num_steps = len(list(steps))
-        assert num_steps == 11, "epi should have 1 + 10 steps"
+
+        assert num_steps == 11, "epi should have 1 + 10 steps, rerun since it can terminate early"
         assert "language_embedding" in episode.keys()
 
         # Iterate through steps in the episode
@@ -89,10 +96,8 @@ def main(auto_logger=False):
             assert "timestamp" in step.keys(), "step should have timestamp metadata"
 
 
-
 if __name__ == "__main__":
     print("Testing OXEEnvLogger")
     main(auto_logger=False)
     main(auto_logger=True)
     print("Done All")
-    

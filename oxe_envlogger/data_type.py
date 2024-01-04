@@ -22,7 +22,6 @@ def get_gym_space(data_sample: Any) -> gym.spaces.Space:
         data_sample = np.array(data_sample)
         return gym.spaces.Box(low=-np.inf, high=np.inf,
                               shape=data_sample.shape, dtype=data_sample.dtype)
-
     # Case for dictionary data
     elif isinstance(data_sample, dict):
         # Recursively convert each item in the dictionary
