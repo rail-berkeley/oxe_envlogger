@@ -5,7 +5,12 @@ import sys
 import os
 import numpy as np
 
-import gym
+try:
+    import gymnasium as gym
+except ImportError:
+    print("gynasium is not installed, use gym instead")
+    import gym
+
 import envlogger
 from envlogger.backends import tfds_backend_writer
 import tensorflow_datasets as tfds

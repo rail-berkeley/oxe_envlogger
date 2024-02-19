@@ -24,8 +24,8 @@ def main(_):
 
     # 2. Log data
     for i in range(3):
-        for i in range(10):
-            if i == 0:
+        for j in range(10):
+            if j == 0: # need to log every first step in traj as a restart
                 step_type = RLDSStepType.RESTART
             else:
                 step_type = RLDSStepType.TRANSITION
