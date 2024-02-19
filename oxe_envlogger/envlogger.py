@@ -3,7 +3,12 @@
 import os
 import numpy as np
 
-import gym
+try:
+    import gymnasium as gym
+except ImportError:
+    print("gynasium is not installed, use gym instead")
+    import gym
+
 import envlogger
 import dm_env
 from envlogger.backends import tfds_backend_writer
