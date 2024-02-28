@@ -95,3 +95,11 @@ logger.close() # this is important to flush the current data to disk
 ```
 
 Notes: type casting is very important in the env logger. For example, the defined `action_space` and `observation_space` in the env should be provided/returned as what they are defined. Otherwise, the logger will raise an error. Also, take note of specific types like `float32`/`float64`, `int32`/`int64` etc.
+
+## Utilities
+
+Script to merge recorded rlds datasets
+
+```bash
+python3 merge_datasets.py --log_dirs all_logs --output_dir output --shard_size 15
+```

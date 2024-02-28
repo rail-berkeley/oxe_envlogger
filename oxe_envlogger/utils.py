@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import os
@@ -63,10 +65,6 @@ def merge_datasets(datasets: List[tf.data.Dataset]) -> tf.data.Dataset:
     merged_dataset = datasets[0]
     for dataset in datasets[1:]:
         merged_dataset = merged_dataset.concatenate(dataset)
-
-        dataset.save(
-            "test"
-        )
     return merged_dataset
 
 

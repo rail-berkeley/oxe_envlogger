@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
+
 import os
 import argparse
 import copy
-from typing import Tuple, Dict, List, Any, Optional
 from oxe_envlogger.utils import \
     print_yellow, find_datasets, get_datasets, merge_datasets, save_rlds_dataset
-
 
 
 if __name__ == "__main__":
@@ -12,6 +12,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_dirs", type=str, nargs='+')
     parser.add_argument("--output_dir", type=str, default='merged_logs')
     parser.add_argument("--overwrite", action='store_true')
+    parser.add_argument("--shard_size", type=int, default=1500, help="Max episodes per shard")
     args = parser.parse_args()
 
     dataset_dirs = find_datasets(args.log_dirs)
@@ -35,7 +36,7 @@ if __name__ == "__main__":
         os.makedirs(args.output_dir)
 
     save_rlds_dataset(merged_dataset, dataset_info,
-                      max_episodes_per_shard=1000,
+                      max_episodes_per_shard=args.shard_size,
                       overwrite=args.overwrite
                       )
     print(f"Saved merged dataset to {args.output_dir}")
