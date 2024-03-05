@@ -51,7 +51,7 @@ def main(auto_logger=False):
         env.set_episode_metadata({"language_embedding": np.random.rand(5).astype(np.float32)})
         env.set_step_metadata({"timestamp": time.time()})
         print("episode", i)
-        env.reset(seed=i)
+        obs, _ = env.reset(seed=i)
 
         for i in range(10):
             env.set_step_metadata({"timestamp": time.time()})

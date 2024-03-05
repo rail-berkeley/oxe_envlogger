@@ -5,10 +5,7 @@ import numpy as np
 from absl import app, flags, logging
 
 import gym
-
-from oxe_envlogger.envlogger import OXEEnvLogger
-import tensorflow_datasets as tfds
-import tensorflow as tf
+from oxe_envlogger.envlogger import AutoOXEEnvLogger
 
 FLAGS = flags.FLAGS
 
@@ -16,40 +13,8 @@ flags.DEFINE_integer('num_episodes', 10, 'Number of episodes to log.')
 flags.DEFINE_string('output_dir', 'datasets/',
                     'Path in a filesystem to record trajectories.')
 flags.DEFINE_string('env_name', 'CartPole-v1', 'Name of the environment.')
-flags.DEFINE_boolean('enable_envlogger', True, 'Enable envlogger.')
+flags.DEFINE_boolean('enable_envlogger', False, 'Enable envlogger.')
 
-
-##############################################################################
-
-def wrap_env_logger(env: gym.Env):
-    """Simple util to wrap gym.Env to dm_env.Environment."""
-    logging.info('Wrapping environment with EnvironmentLogger...')
-
-    # Define tuple of MetadataInfo and MetadataCallback
-    step_metadata_info = {'timestamp': tfds.features.Tensor(shape=(),
-                                                            dtype=np.float32,
-                                                            doc="Timestamp for the step.")}
-    episode_metadata_info = {'language_embedding': tfds.features.Tensor(
-        shape=(5,),
-        dtype=np.float32,
-        doc="Language embedding for the episode.")}
-
-    # make env logger
-    env = OXEEnvLogger(
-        env,
-        dataset_name=FLAGS.env_name,
-        directory=FLAGS.output_dir,
-        max_episodes_per_file=500,
-        step_metadata_info=step_metadata_info,
-        episode_metadata_info=episode_metadata_info,
-        doc_field={
-            "proprio": "Proprioception of the robot arm.",
-            "image_0": "RGB image from the camera.",
-        },
-    )
-
-    logging.info('Done wrapping environment with EnvironmentLogger.')
-    return env
 
 ##############################################################################
 
@@ -61,7 +26,11 @@ def main(unused_argv):
     logging.info(f'Done creating {FLAGS.env_name} environment.')
 
     if FLAGS.enable_envlogger:
-        env = wrap_env_logger(env)
+        env = AutoOXEEnvLogger(
+            env=env,
+            dataset_name=FLAGS.env_name,
+            directory=FLAGS.output_dir,
+        )
 
     logging.info('Training an agent for %r episodes...', FLAGS.num_episodes)
 
@@ -75,17 +44,25 @@ def main(unused_argv):
             env.set_step_metadata({"timestamp": time.time()})
 
         logging.info('episode %r', i)
-        obs, _ = env.reset()
-        done = False
+        env.reset()
+        terminated = False
+        truncated = False
 
-        while not done:
+        while not (terminated or truncated):
             action = env.action_space.sample()
 
             # example to log custom step metadata
             if FLAGS.enable_envlogger:
                 env.set_step_metadata({"timestamp": time.time()})
 
-            obs, reward, _, done, _ = env.step(action)
+            return_step = env.step(action)
+
+            # NOTE: to handle gym.Env.step() return value change in gym 0.26
+            if len(return_step) == 5:
+                obs, reward, terminated, truncated, info = return_step
+            else:
+                obs, reward, terminated, info = return_step
+                truncated = False
 
     logging.info(
         'Done training a random agent for %r episodes.', FLAGS.num_episodes)

@@ -361,6 +361,10 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
         """Refer to abstract method in EnvLoggerBase"""
         if not self.has_init_logger:
             obs = self.env.reset(**kwargs)
+            if isinstance(obs, tuple):
+                obs, info = obs
+            else:
+                info = {}
             self._temp_init_episode_data.append(
                 dict(
                     obs=obs,
@@ -375,7 +379,7 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
                 self._save_first_episode()
                 self.has_init_logger = True
                 print_yellow("Done initializing logger.")
-            return obs
+            return obs, info
         # Normal mode after init
         self.dm_env.reset_kwargs = kwargs  # experimental
         val = self.dm_env.reset()
@@ -396,7 +400,13 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
                     truncate=ret_tuple[3],
                 )
             )
-            return ret_tuple
+            # NOTE: truncate is not supported in gym<0.26.0
+            if len(ret_tuple) == 5:
+                obs, reward, done, truncate, info = ret_tuple
+            else:
+                obs, reward, done, info = ret_tuple
+                truncate = False
+            return obs, reward, done, truncate, info
         self.dm_env.step_kwargs = kwargs  # experimental
         val = self.dm_env.step(action)
         self.dm_env.step_kwargs = {} # reset custom kwargs

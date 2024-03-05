@@ -26,8 +26,8 @@ class GymReturn:
         if isinstance(val, dm_env.TimeStep):
             obs = val.observation
             reward = val.reward
-            terminate = val.last()
             truncate = False
+            terminate = val.last()
             info = {}
         else:
             obs, reward, terminate, truncate, info = val
