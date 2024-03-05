@@ -122,7 +122,7 @@ Notes: type casting is very important in the env logger. For example, the define
 
 ## Utilities
 
-Script to merge and reshard the rlds datasets
+**Script to merge and reshard the rlds datasets**
 
 ```bash
 # --rlds_dirs: directory(s) that contain nested directories of rlds logs
@@ -133,3 +133,10 @@ python3 reshard_rlds.py --overwrite --rlds_dirs all_logs --output_rlds output_rl
 ```
 
 Note: The log_dirs can be in a form of `--rlds_dirs all_logs` or `--rlds_dirs all_logs/logs1 all_logs/logs2 all_logs/logs3`. When merging, all logs should have the same format.
+
+**Test scripts for `oxe_envlogger`**
+
+```bash
+python tests/log_rlds.py
+python tests/log_env.py
+```
