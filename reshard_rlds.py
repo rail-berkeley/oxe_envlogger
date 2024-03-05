@@ -28,13 +28,13 @@ if __name__ == "__main__":
     # Merged datasets and get the size info of the merged dataset
     merged_dataset = merge_datasets(datasets)
     total_size = sum([info.dataset_size for info in dataset_infos])
-    recommended_shard_size = round(100*1024*1024*len(merged_dataset)/total_size)
+    recommended_shard_size = round(200*1024*1024*len(merged_dataset)/total_size)
 
     print_yellow(f"Total size of datasets: {total_size/1024.0} kb")
     print_yellow(f"Merging {len(datasets)} datasets with "
                  f"total {len(merged_dataset)} episodes.")
     print_yellow(f"!!NOTE!! It is recommended to keep tfrecord size at "
-                 f"around 100MB. Thus the recommended shard size should "
+                 f"around 200MB. Thus the recommended shard size should "
                  f"be around {recommended_shard_size} episodes. ")
 
     def update_data_dir(target_dir, dataset_info):

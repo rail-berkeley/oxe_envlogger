@@ -213,7 +213,7 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             env: gym.Env,
             dataset_name: str,
             directory: str = None,
-            optimal_shard_size: int = 100,
+            optimal_shard_size: int = 200,
     ):
         """
         args:
@@ -250,12 +250,12 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
         """
         print(self._temp_init_step_data[0])
         print_yellow("Initializing logger...")
-        # convert to mb
+        # convert to mb and times a factor of 2 to accomodata short episode of traj_0
         epi_size = (
             sys.getsizeof(self._temp_init_step_data) +
             sys.getsizeof(self.episode_metadata_elements)
-        ) / 1024.0 / 1024.0
-        max_episodes_per_file = int(self.optimal_shard_size / epi_size)
+        ) * 2.0 / 1024.0 / 1024.0
+        max_episodes_per_file = max(int(self.optimal_shard_size / epi_size), 1)
         print_yellow(f"Size of first episode: {epi_size} MB, "
                      f"with shard size: {max_episodes_per_file} episodes")
 
