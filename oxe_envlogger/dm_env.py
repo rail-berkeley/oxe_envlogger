@@ -6,7 +6,7 @@ import gym
 import dm_env
 from dm_env import specs
 
-from typing import Any, Dict, List, Tuple, Callable
+from typing import Any, Dict, List, Tuple, Callable, Optional
 from oxe_envlogger.data_type import from_space_to_spec, enforce_type_consistency
 
 
@@ -30,8 +30,8 @@ class GymReturn:
             terminate = val.last()
             info = {}
         else:
-            obs, reward, truncate, terminate, info = val
-        return obs, reward, truncate, terminate, info
+            obs, reward, terminate, truncate, info = val
+        return obs, reward, terminate, truncate, info
 
     def convert_reset(val: Any) -> Tuple[np.ndarray, dict]:
         """
@@ -56,26 +56,35 @@ class DummyDmEnv():
     https://github.com/google-deepmind/dm_env
     """
 
-    def __init__(self,
-                 observation_space: gym.Space,
-                 action_space: gym.Space,
-                 step_callback: Callable,
-                 reset_callback: Callable,
-                 ):
+    def __init__(self, gym_env: gym.Env):
         """
-        :param observation_space: gym observation space
-        :param action_space: gym action space
-        :param step_callback: callback function to call gymenv.step
-        :param reset_callback: callback function to call gymenv.reset
+        :param gym_env: gym.Env instance
         """
-        self.step_callback = step_callback
-        self.reset_callback = reset_callback
-        self.observation_space = observation_space
-        self.action_space = action_space
+        self.gym_env = gym_env
+        self.observation_space = gym_env.observation_space
+        self.action_space = gym_env.action_space
+        # # NOTE experimental feature, this to pass in kwargs to the step
+        #       and reset function as user might have some kwargs defined
+        #       in the step(action, ...) and reset(...) api
+        self.step_kwargs = {}
+        self.reset_kwargs = {}
+        
+        # NOTE experimental feature, this to pass in custom callback when
+        #      step and reset is called. This is useful for logging
+        self.custom_step_env_callback = None
+        self.custom_reset_env_callback = None
 
     def step(self, action) -> dm_env.TimeStep:
-        # Note that dm_env.step doesn't accept additional arguments
-        val = self.step_callback(action)
+        """
+        Standard dm_env.step interface
+        Note: dm_env.step doesn't accept additional arguments
+        """
+        action = enforce_type_consistency(self.action_space, action)
+        if self.custom_step_env_callback:
+            val = self.custom_step_env_callback(action)
+        else:
+            val = self.gym_env.step(action, **self.step_kwargs)
+
         # NOTE: to support previous version fo gym api where it doesnt
         # return truncate and terminate.
         # https://github.com/openai/gym/releases/tag/0.26.0
@@ -99,8 +108,14 @@ class DummyDmEnv():
         return ts
 
     def reset(self) -> dm_env.TimeStep:
-        # Note that dm_env.reset doesn't accept additional arguments
-        obs = self.reset_callback()
+        """
+        Standard dm_env.reset interface
+        Note: dm_env.reset doesn't accept additional arguments
+        """
+        if self.custom_reset_env_callback:
+            obs = self.custom_reset_env_callback()
+        else:
+            obs = self.gym_env.reset(**self.reset_kwargs)
 
         # NOTE: api change in gym 0.26.0
         # https://github.com/openai/gym/releases/tag/0.26.0
@@ -130,51 +145,6 @@ class DummyDmEnv():
             name='discount',
         )
 
-
-class DmEnvWrapper(gym.Wrapper):
-    """
-    This class wraps gym.Env with dm_env.Environment
-    EnvLogger uses dm_env.Environment interface, which requires the use of `spec`
-    and `timestep` as return values of `step` and `reset` methods.
-    https://github.com/google-deepmind/dm_env
-    """
-
-    def __init__(self, env: gym.Env):
-        super().__init__(env)
-
-    def step(self, action) -> dm_env.TimeStep:
-        val = self.env.step(action)
-        obs, reward, terminate, truncate, info = val
-        reward = float(reward)
-        if terminate:
-            ts = dm_env.termination(reward=reward, observation=obs)
-        elif truncate:
-            ts = dm_env.truncation(reward=reward, observation=obs)
-        else:
-            ts = dm_env.transition(reward=reward, observation=obs)
-        return ts
-
-    def reset(self) -> dm_env.TimeStep:
-        obs, _ = self.env.reset()
-        ts = dm_env.restart(obs)
-        return ts
-
-    def observation_spec(self):
-        return from_space_to_spec(self.env.observation_space, "observation")
-
-    def action_spec(self):
-        return from_space_to_spec(self.env.action_space, "action")
-
-    def reward_spec(self):
-        return specs.Array(
-            shape=(),
-            dtype=np.float64,
-            name='reward',
-        )
-
-    def discount_spec(self):
-        return specs.Array(
-            shape=(),
-            dtype=np.float64,
-            name='discount',
-        )
+    def close(self):
+        if hasattr(self.gym_env, "close"):
+            self.gym_env.close()
