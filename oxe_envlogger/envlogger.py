@@ -254,7 +254,7 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
         epi_size = (
             sys.getsizeof(self._temp_init_step_data) +
             sys.getsizeof(self.episode_metadata_elements)
-        ) / 1024 / 1024
+        ) / 1024.0 / 1024.0
         max_episodes_per_file = int(self.optimal_shard_size / epi_size)
         print_yellow(f"Size of first episode: {epi_size} MB, "
                      f"with shard size: {max_episodes_per_file} episodes")

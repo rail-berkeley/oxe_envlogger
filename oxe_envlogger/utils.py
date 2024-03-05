@@ -3,13 +3,15 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import os
-from typing import Tuple, Dict, List, Any, Optional
+from typing import Tuple, List, Set
 from tensorflow_datasets.core import SequentialWriter
+import tqdm
 
 
-def find_datasets(log_dirs=['logs']) -> List[str]:
+def find_datasets(log_dirs=['logs']) -> Set[str]:
     """
-    Finds dataset directories within specified log directories.
+    Finds dataset directories within specified log directories
+    that contain 'features.json'.
 
     Args:
         log_dirs (list of str): Directories to search for datasets.
@@ -17,14 +19,27 @@ def find_datasets(log_dirs=['logs']) -> List[str]:
     Returns:
         list of str: A list of dataset directories.
     """
-    datasets_dirs = []
+    dataset_dirs = set()
+
+    def search_dirs(dir_path: str):
+        # Iterate over each item in the current directory
+        for item in os.listdir(dir_path):
+            full_path = os.path.join(dir_path, item)
+            # If the item is a directory, recursively search it
+            if os.path.isdir(full_path):
+                search_dirs(full_path)
+            # If the item is 'features.json', add its directory to the list
+            elif item == 'features.json':
+                dataset_dirs.add(os.path.dirname(full_path))
+                break
+
+    # Iterate over each directory in log_dirs and search it
     for log_dir in log_dirs:
-        if os.path.isdir(log_dir):
-            for dir in os.listdir(log_dir):
-                dir_path = os.path.join(log_dir, dir)
-                if os.path.isdir(dir_path):
-                    datasets_dirs.append(dir_path)
-    return datasets_dirs
+        if os.path.exists(log_dir):
+            search_dirs(log_dir)
+        else:
+            print(f"Warning: The directory {log_dir} does not exist.")
+    return dataset_dirs
 
 
 def get_datasets(
@@ -79,7 +94,7 @@ def save_rlds_dataset(
 
     def recursive_dict_to_numpy(d):
         """
-        convert each values in the step dict to numpy array
+        convert each values in the dict to numpy array
         TODO: THIS IS A HACK!!! since the sequence writer uses
         https://github.com/tensorflow/datasets/blob/ab25353173afa5fa01d03759a5e482c82d4fd889/tensorflow_datasets/core/features/tensor_feature.py#L149
         API, which will throw an error if the input is not a numpy array
@@ -92,7 +107,7 @@ def save_rlds_dataset(
         return d
 
     # Write episodes to disk
-    for episode in dataset:
+    for episode in tqdm.tqdm(dataset, desc="Writing episodes"):
         # Manage non-"steps" keys data, e.g. language_embedding, metadata, etc.
         episodic_data_dict = {
             key: episode[key] for key in episode.keys() if key != "steps"
@@ -100,7 +115,6 @@ def save_rlds_dataset(
         episodic_data_dict = recursive_dict_to_numpy(episodic_data_dict)
         steps = []
         for step in episode["steps"]:
-
             step = recursive_dict_to_numpy(step)
             steps.append(step)
 

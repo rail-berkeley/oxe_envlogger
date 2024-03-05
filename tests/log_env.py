@@ -10,7 +10,7 @@ import tensorflow as tf
 import time
 
 
-def main(auto_logger=False):
+def run_logger(auto_logger=False):
     print("##########################################")
     print("## Testing with auto_logger: ", auto_logger)
 
@@ -98,6 +98,6 @@ def main(auto_logger=False):
 
 if __name__ == "__main__":
     print("Testing OXEEnvLogger")
-    main(auto_logger=False)
-    main(auto_logger=True)
+    run_logger(auto_logger=False)
+    run_logger(auto_logger=True)
     print("Done All")
