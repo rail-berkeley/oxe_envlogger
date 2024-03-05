@@ -101,5 +101,9 @@ Notes: type casting is very important in the env logger. For example, the define
 Script to merge recorded rlds datasets
 
 ```bash
-python3 merge_datasets.py --log_dirs all_logs --output_dir output --shard_size 15
+# --log_dirs: directory that contains of nested directories of rlds logs
+# --output_dir: directory to store the merged rlds logs
+# --shard_size: number of episodes per file
+# --overwrite: overwrite the output directory
+python3 merge_datasets.py --overwrite --log_dirs all_logs --output_dir output --shard_size 15
 ```

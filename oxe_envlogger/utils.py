@@ -7,9 +7,6 @@ from typing import Tuple, Dict, List, Any, Optional
 from tensorflow_datasets.core import SequentialWriter
 
 
-def print_yellow(x): return print("\033[93m {}\033[00m" .format(x))
-
-
 def find_datasets(log_dirs=['logs']) -> List[str]:
     """
     Finds dataset directories within specified log directories.
@@ -81,6 +78,12 @@ def save_rlds_dataset(
     writer.initialize_splits(["train"], fail_if_exists=False)
 
     def recursive_dict_to_numpy(d):
+        """
+        convert each values in the step dict to numpy array
+        TODO: THIS IS A HACK!!! since the sequence writer uses
+        https://github.com/tensorflow/datasets/blob/ab25353173afa5fa01d03759a5e482c82d4fd889/tensorflow_datasets/core/features/tensor_feature.py#L149
+        API, which will throw an error if the input is not a numpy array
+        """
         for k, v in d.items():
             if isinstance(v, dict):
                 recursive_dict_to_numpy(v)
@@ -89,15 +92,20 @@ def save_rlds_dataset(
         return d
 
     # Write episodes to disk
-    print_yellow(f"Writing episodes to disk... with {len(dataset)} episodes.")
     for episode in dataset:
+        # Manage non-"steps" keys data, e.g. language_embedding, metadata, etc.
+        episodic_data_dict = {
+            key: episode[key] for key in episode.keys() if key != "steps"
+        }
+        episodic_data_dict = recursive_dict_to_numpy(episodic_data_dict)
+        steps = []
         for step in episode["steps"]:
-            # convert each values in the step dict to numpy array
-            # TODO: THIS IS A HACK!!! since the sequence writer uses
-            # https://github.com/tensorflow/datasets/blob/ab25353173afa5fa01d03759a5e482c82d4fd889/tensorflow_datasets/core/features/tensor_feature.py#L149
-            # API, which will throw an error if the input is not a numpy array
+
             step = recursive_dict_to_numpy(step)
-            writer.add_examples(
-                {"train": [{"steps": [step]}]}
-            )
+            steps.append(step)
+
+        # write the episode to the dataset
+        writer.add_examples(
+            {"train": [{"steps": steps, **episodic_data_dict}]}
+        )
     writer.close_all()
