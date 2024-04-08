@@ -102,9 +102,9 @@ class DummyDmEnv():
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
         elif truncate:
-            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(0.0))
+            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(1.0))
         else:
-            ts = dm_env.transition(reward=reward, observation=obs, discount=np.float32(0.0))
+            ts = dm_env.transition(reward=reward, observation=obs, discount=np.float32(1.0))
         return ts
 
     def reset(self) -> dm_env.TimeStep:
