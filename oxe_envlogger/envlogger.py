@@ -5,11 +5,11 @@ import sys
 import os
 import numpy as np
 
-try:
-    import gymnasium as gym
-except ImportError:
-    print("gynasium is not installed, use gym instead")
-    import gym
+# try:
+#     import gymnasium as gym
+# except ImportError:
+#     print("gynasium is not installed, use gym instead")
+import gym
 
 import envlogger
 from envlogger.backends import tfds_backend_writer
@@ -137,8 +137,8 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             observation_info=from_space_to_feature(
                 env.observation_space, doc_field),
             action_info=from_space_to_feature(env.action_space, doc_field),
-            reward_info=np.float64,
-            discount_info=np.float64,
+            reward_info=np.float32,
+            discount_info=np.float32,
             step_metadata_info=step_metadata_info,
             episode_metadata_info=episode_metadata_info,
             version=version,
@@ -282,8 +282,8 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             name=self.dataset_name,
             observation_info=observation_info,
             action_info=action_info,
-            reward_info=np.float64,
-            discount_info=np.float64,
+            reward_info=np.float32,
+            discount_info=np.float32,
             step_metadata_info=step_metadata_info,
             episode_metadata_info=episode_metadata_info,
             version=self.default_version,

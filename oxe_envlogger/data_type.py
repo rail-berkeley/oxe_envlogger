@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-try:
-    import gymnasium as gym
-except ImportError:
-    print("gynasium is not installed, use gym instead")
-    import gym
+# try:
+#     import gymnasium as gym
+# except ImportError:
+#     print("gynasium is not installed, use gym instead")
+import gym
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -53,7 +53,7 @@ def get_tfds_feature(data_sample: Any) -> tfds.features.FeatureConnector:
     elif isinstance(data_sample, (int, np.int32, np.int64)):
         return tfds.features.Tensor(shape=(), dtype=np.int64)
     elif isinstance(data_sample, (float, np.float32, np.float64)):
-        return tfds.features.Tensor(shape=(), dtype=np.float64)
+        return tfds.features.Tensor(shape=(), dtype=np.float32)
     else:
         raise TypeError(f"Unsupported data type for tfds features conversion, {type(data_sample)}")
 
@@ -69,13 +69,17 @@ def from_space_to_feature(space_def: gym.Space,
     """
     # check if observation space is dict
     if isinstance(space_def, gym.spaces.Dict):
+        # recursively convert each item in the dictionary
         feature = tfds.features.FeaturesDict({
-            key: tfds.features.Tensor(shape=space.shape,
-                                      dtype=space.dtype,
-                                      doc=doc_field.get(key, None)
-                                      )
-            for key, space in space_def.spaces.items()
+            key: from_space_to_feature(value, doc_field)
+            for key, value in space_def.spaces.items()
         })
+    # use tensorflow_datasets.core.features.image_feature.Image
+    elif isinstance(space_def.shape, tuple) and len(space_def.shape) == 3:
+        feature = tfds.features.Image(shape=space_def.shape,
+                                      dtype=space_def.dtype,
+                                      doc=doc_field.get("image", None)
+                                      )
     else:
         feature = tfds.features.Tensor(
             shape=space_def.shape,
@@ -90,7 +94,7 @@ def from_space_to_spec(space_def: gym.Space, name: str) -> specs:
     https://github.com/google-deepmind/dm_env/blob/master/dm_env/specs.py
     """
     # check if observation space is dict
-    if isinstance(space_def, gym.spaces.Dict):
+    if isinstance(space_def, gym.spaces.dict.Dict):
         spec = {
             key: specs.Array(
                 shape=space.shape,

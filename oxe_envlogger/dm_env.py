@@ -95,16 +95,16 @@ class DummyDmEnv():
             terminate = done
             truncate = False  # NOTE: truncate is not supported in gym<0.26.0
 
-        # ensure type consistency
-        reward = float(reward)
+        # ensure type consistency, with reward and discount below is float32 comply with spec
+        reward = np.float32(reward)
         obs = enforce_type_consistency(self.observation_space, obs)
 
         if terminate:
             ts = dm_env.termination(reward=reward, observation=obs)
         elif truncate:
-            ts = dm_env.truncation(reward=reward, observation=obs)
+            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(0.0))
         else:
-            ts = dm_env.transition(reward=reward, observation=obs)
+            ts = dm_env.transition(reward=reward, observation=obs, discount=np.float32(0.0))
         return ts
 
     def reset(self) -> dm_env.TimeStep:
@@ -134,14 +134,14 @@ class DummyDmEnv():
     def reward_spec(self):
         return specs.Array(
             shape=(),
-            dtype=np.float64,
+            dtype=np.float32,
             name='reward',
         )
 
     def discount_spec(self):
         return specs.Array(
             shape=(),
-            dtype=np.float64,
+            dtype=np.float32,
             name='discount',
         )
 
