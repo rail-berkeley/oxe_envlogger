@@ -156,8 +156,8 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             store_ds_metadata=True,
         )
 
-        dm_env = DummyDmEnv(env)
-        self.dm_env = envlogger.EnvLogger(dm_env,
+        self.dm_env_base = DummyDmEnv(env)
+        self.dm_env = envlogger.EnvLogger(self.dm_env_base,
                                           step_fn=step_metadata_fn,
                                           episode_fn=episode_metadata_fn,
                                           backend=writer
@@ -166,16 +166,16 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
 
     def step(self, action, **kwargs) -> Tuple:
         """Refer to abstract method in EnvLoggerBase"""
-        self.dm_env.step_kwargs = kwargs  # experimental
+        self.dm_env_base.step_kwargs = kwargs  # experimental
         val = self.dm_env.step(action)
-        self.dm_env.step_kwargs = {}
+        self.dm_env_base.step_kwargs = {}
         return GymReturn.convert_step(val)
 
     def reset(self, **kwargs) -> Tuple:
         """Refer to abstract method in EnvLoggerBase"""
-        self.dm_env.reset_kwargs = kwargs  # experimental
+        self.dm_env_base.reset_kwargs = kwargs  # experimental
         val = self.dm_env.reset()
-        self.dm_env.reset_kwargs = {}
+        self.dm_env_base.reset_kwargs = {}
         return GymReturn.convert_reset(val)
 
     def set_step_metadata(self, metadata: Dict[str, Any]):
