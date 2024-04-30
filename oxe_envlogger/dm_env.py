@@ -8,6 +8,7 @@ from dm_env import specs
 
 from typing import Any, Dict, List, Tuple, Callable, Optional
 from oxe_envlogger.data_type import from_space_to_spec, enforce_type_consistency
+import copy
 
 
 class GymReturn:
@@ -31,6 +32,9 @@ class GymReturn:
             info = {}
         else:
             obs, reward, terminate, truncate, info = val
+        # NOTE: since logging is done async, this is important to ensure the obs is
+        # immutable even after wrapper, thus deepcopy
+        obs = copy.deepcopy(obs)
         return obs, reward, terminate, truncate, info
 
     def convert_reset(val: Any) -> Tuple[np.ndarray, dict]:
@@ -44,6 +48,9 @@ class GymReturn:
             info = {}
         else:
             obs, info = val
+        # NOTE: since logging is done async, this is important to ensure the obs is
+        # immutable even after wrapper, thus deepcopy
+        obs = copy.deepcopy(obs)
         return obs, info
 
 
