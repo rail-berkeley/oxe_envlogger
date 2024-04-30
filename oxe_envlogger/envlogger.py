@@ -17,7 +17,7 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 
 from typing import Any, Dict, Tuple, Optional
-from oxe_envlogger.data_type import from_space_to_feature, populate_docs
+from oxe_envlogger.data_type import from_space_to_feature, populate_docs, enforce_type_consistency
 from oxe_envlogger.dm_env import GymReturn, DummyDmEnv
 from abc import ABC, abstractmethod
 
@@ -167,6 +167,7 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
     def step(self, action, **kwargs) -> Tuple:
         """Refer to abstract method in EnvLoggerBase"""
         self.dm_env_base.step_kwargs = kwargs  # experimental
+        action = enforce_type_consistency(self.dm_env.action_space, action)
         val = self.dm_env.step(action)
         self.dm_env_base.step_kwargs = {}
         return GymReturn.convert_step(val)

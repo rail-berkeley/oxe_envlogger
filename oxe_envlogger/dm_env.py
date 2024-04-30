@@ -86,7 +86,6 @@ class DummyDmEnv():
         Standard dm_env.step interface
         Note: dm_env.step doesn't accept additional arguments
         """
-        action = enforce_type_consistency(self.action_space, action)
         if self.custom_step_env_callback:
             val = self.custom_step_env_callback(action)
         else:
