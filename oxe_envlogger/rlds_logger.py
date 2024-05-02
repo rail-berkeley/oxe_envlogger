@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import dm_env
+from dm_env import TimeStep, StepType
 from envlogger import step_data
 from typing import Dict, Any, Optional
 
@@ -38,6 +39,7 @@ class RLDSLogger:
             directory: str,
             max_episodes_per_file: int,
             max_steps_per_episode: Optional[int] = None,
+            step_metadata_info: MetadataInfo = {},
             doc_field: DocField = {},
             version: str = '0.1.0',
     ):
@@ -49,6 +51,7 @@ class RLDSLogger:
             directory: directory to store the trajectories
             max_episodes_per_file: maximum number of episodes to store in a single file
             max_steps_per_episode: maximum number of steps per episode, default to None
+            step_metadata_info: dict of step metadata for the dict tree in obs and action space
             doc_field: dict of doc field for the dict tree in obs and action space
             version: version of the dataset
         """
@@ -60,6 +63,8 @@ class RLDSLogger:
         self.action_space = action_space
         self.max_steps_per_episode = max_steps_per_episode
         self._curr_steps = 0
+        self.step_metadata_info = step_metadata_info
+        self._prev_custom_data = None
 
         # check if directory exists else create it
         if not os.path.exists(directory):
@@ -72,8 +77,9 @@ class RLDSLogger:
             observation_info=from_space_to_feature(
                 observation_space, doc_field),
             action_info=from_space_to_feature(action_space, doc_field),
-            reward_info=np.float64,
-            discount_info=np.float64,
+            reward_info=np.float32,
+            discount_info=np.float32,
+            step_metadata_info=step_metadata_info,
             version=version,
         )
 
@@ -93,7 +99,8 @@ class RLDSLogger:
                  action: Any,
                  obs: Any,
                  reward: float,
-                 step_type: RLDSStepType = RLDSStepType.TRANSITION
+                 metadata: Dict[str, Any] = {},
+                 step_type: RLDSStepType = RLDSStepType.TRANSITION,
                  ):
         """
         args:
@@ -105,17 +112,20 @@ class RLDSLogger:
         # explicitly enforce type consistency
         obs = enforce_type_consistency(self.observation_space, obs)
         action = enforce_type_consistency(self.action_space, action)
-        reward = float(reward) # ensure reward is float
+        reward = np.float32(reward)
 
         # record step
         if step_type == RLDSStepType.TERMINATION:
-            ts = dm_env.termination(reward=reward, observation=obs)
+            # NOTE: explicitly set discount to custom float32 since dm_env.termination() is using float64
+            # https://github.com/google-deepmind/dm_env/blob/91b46797fea731f80eab8cd2c8352a0674141d89/dm_env/_environment.py#L226
+            # ts = dm_env.termination(reward=reward, observation=obs), 
+            ts = TimeStep(StepType.LAST, reward, np.float32(0.0), obs)
         elif step_type == RLDSStepType.TRUNCATION:
-            ts = dm_env.truncation(reward=reward, observation=obs)
+            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(1.0))
         elif step_type == RLDSStepType.RESTART:
             ts = dm_env.restart(obs)
         elif step_type == RLDSStepType.TRANSITION:
-            ts = dm_env.transition(reward=reward, observation=obs)
+            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(1.0))
         else:
             raise NotImplementedError
 
@@ -127,10 +137,22 @@ class RLDSLogger:
             step_type = RLDSStepType.RESTART
             self._curr_steps = 0
 
+        # This is to record step metadata
+        custom_data = None
+        if self.step_metadata_info:
+            # we will use the cached metadata if user didn't provide during
+            # the following steps
+            if metadata:
+                custom_data = metadata
+                self._prev_custom_data = metadata
+            else:
+                custom_data = self._prev_custom_data
+
         self.writer.record_step(
             step_data.StepData(
                 timestep=ts,
                 action=action,
+                custom_data=custom_data,
             ),
             is_new_episode=step_type == RLDSStepType.RESTART,
         )

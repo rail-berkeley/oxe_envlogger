@@ -4,10 +4,11 @@ import numpy as np
 
 import gym
 import dm_env
-from dm_env import specs
+from dm_env import TimeStep, StepType, specs
 
 from typing import Any, Dict, List, Tuple, Callable, Optional
 from oxe_envlogger.data_type import from_space_to_spec, enforce_type_consistency
+import copy
 
 
 class GymReturn:
@@ -31,6 +32,9 @@ class GymReturn:
             info = {}
         else:
             obs, reward, terminate, truncate, info = val
+        # NOTE: since logging is done async, this is important to ensure the obs is
+        # immutable even after wrapper, thus deepcopy
+        obs = copy.deepcopy(obs)
         return obs, reward, terminate, truncate, info
 
     def convert_reset(val: Any) -> Tuple[np.ndarray, dict]:
@@ -44,6 +48,9 @@ class GymReturn:
             info = {}
         else:
             obs, info = val
+        # NOTE: since logging is done async, this is important to ensure the obs is
+        # immutable even after wrapper, thus deepcopy
+        obs = copy.deepcopy(obs)
         return obs, info
 
 
@@ -79,7 +86,6 @@ class DummyDmEnv():
         Standard dm_env.step interface
         Note: dm_env.step doesn't accept additional arguments
         """
-        action = enforce_type_consistency(self.action_space, action)
         if self.custom_step_env_callback:
             val = self.custom_step_env_callback(action)
         else:
@@ -95,16 +101,19 @@ class DummyDmEnv():
             terminate = done
             truncate = False  # NOTE: truncate is not supported in gym<0.26.0
 
-        # ensure type consistency
-        reward = float(reward)
+        # ensure type consistency, with reward and discount below is float32 comply with spec
+        reward = np.float32(reward)
         obs = enforce_type_consistency(self.observation_space, obs)
 
         if terminate:
-            ts = dm_env.termination(reward=reward, observation=obs)
+            # NOTE: explicitly set discount to custom float32 since dm_env.termination() is using float64
+            # https://github.com/google-deepmind/dm_env/blob/91b46797fea731f80eab8cd2c8352a0674141d89/dm_env/_environment.py#L226
+            # ts = dm_env.termination(reward=reward, observation=obs), 
+            ts = TimeStep(StepType.LAST, reward, np.float32(0.0), obs)
         elif truncate:
-            ts = dm_env.truncation(reward=reward, observation=obs)
+            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(1.0))
         else:
-            ts = dm_env.transition(reward=reward, observation=obs)
+            ts = dm_env.transition(reward=reward, observation=obs, discount=np.float32(1.0))
         return ts
 
     def reset(self) -> dm_env.TimeStep:
@@ -134,14 +143,14 @@ class DummyDmEnv():
     def reward_spec(self):
         return specs.Array(
             shape=(),
-            dtype=np.float64,
+            dtype=np.float32,
             name='reward',
         )
 
     def discount_spec(self):
         return specs.Array(
             shape=(),
-            dtype=np.float64,
+            dtype=np.float32,
             name='discount',
         )
 

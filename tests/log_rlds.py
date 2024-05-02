@@ -20,16 +20,17 @@ def main(_):
         dataset_name="test_rlds",
         directory="logs",
         max_episodes_per_file=1,
+        step_metadata_info={"lang_text": tfds.features.Text()},
     )
 
     # 2. Log data
     for i in range(3):
         for j in range(10):
             if j == 0: # need to log every first step in traj as a restart
-                step_type = RLDSStepType.RESTART
+                _mdata = {"lang_text": f"hello {i}"}
+                logger(action_sample, obs_sample, 1.0, metadata=_mdata, step_type=RLDSStepType.RESTART)
             else:
-                step_type = RLDSStepType.TRANSITION
-            logger(action_sample, obs_sample, 1.0, step_type=step_type)
+                logger(action_sample, obs_sample, 1.0, step_type=RLDSStepType.TRANSITION)
         logger(action_sample, obs_sample, 1.0, step_type=RLDSStepType.TERMINATION)
 
     logger.close()

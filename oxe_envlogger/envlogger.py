@@ -17,7 +17,7 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 
 from typing import Any, Dict, Tuple, Optional
-from oxe_envlogger.data_type import from_space_to_feature, populate_docs
+from oxe_envlogger.data_type import from_space_to_feature, populate_docs, enforce_type_consistency
 from oxe_envlogger.dm_env import GymReturn, DummyDmEnv
 from abc import ABC, abstractmethod
 
@@ -137,8 +137,8 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             observation_info=from_space_to_feature(
                 env.observation_space, doc_field),
             action_info=from_space_to_feature(env.action_space, doc_field),
-            reward_info=np.float64,
-            discount_info=np.float64,
+            reward_info=np.float32,
+            discount_info=np.float32,
             step_metadata_info=step_metadata_info,
             episode_metadata_info=episode_metadata_info,
             version=version,
@@ -156,8 +156,8 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             store_ds_metadata=True,
         )
 
-        dm_env = DummyDmEnv(env)
-        self.dm_env = envlogger.EnvLogger(dm_env,
+        self.dm_env_base = DummyDmEnv(env)
+        self.dm_env = envlogger.EnvLogger(self.dm_env_base,
                                           step_fn=step_metadata_fn,
                                           episode_fn=episode_metadata_fn,
                                           backend=writer
@@ -166,16 +166,17 @@ class OXEEnvLogger(gym.Wrapper, EnvLoggerBase):
 
     def step(self, action, **kwargs) -> Tuple:
         """Refer to abstract method in EnvLoggerBase"""
-        self.dm_env.step_kwargs = kwargs  # experimental
+        self.dm_env_base.step_kwargs = kwargs  # experimental
+        action = enforce_type_consistency(self.dm_env.action_space, action)
         val = self.dm_env.step(action)
-        self.dm_env.step_kwargs = {}
+        self.dm_env_base.step_kwargs = {}
         return GymReturn.convert_step(val)
 
     def reset(self, **kwargs) -> Tuple:
         """Refer to abstract method in EnvLoggerBase"""
-        self.dm_env.reset_kwargs = kwargs  # experimental
+        self.dm_env_base.reset_kwargs = kwargs  # experimental
         val = self.dm_env.reset()
-        self.dm_env.reset_kwargs = {}
+        self.dm_env_base.reset_kwargs = {}
         return GymReturn.convert_reset(val)
 
     def set_step_metadata(self, metadata: Dict[str, Any]):
@@ -282,8 +283,8 @@ class AutoOXEEnvLogger(gym.Wrapper, EnvLoggerBase):
             name=self.dataset_name,
             observation_info=observation_info,
             action_info=action_info,
-            reward_info=np.float64,
-            discount_info=np.float64,
+            reward_info=np.float32,
+            discount_info=np.float32,
             step_metadata_info=step_metadata_info,
             episode_metadata_info=episode_metadata_info,
             version=self.default_version,
