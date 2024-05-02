@@ -3,7 +3,7 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import os
-from typing import Tuple, List, Set
+from typing import Tuple, List, Set, Callable, Optional, Dict, Any
 from tensorflow_datasets.core import SequentialWriter
 import tqdm
 
@@ -85,8 +85,20 @@ def save_rlds_dataset(
     dataset_info: tfds.core.DatasetInfo,
     max_episodes_per_shard: int = 1000,
     overwrite: bool = False,
+    eps_filtering_fn: Optional[Callable[[int, Dict[str, Any]], bool]] = None,
 ):
-    # Convert observation and action spaces to TFDS features
+    """
+    Save the dataset to disk in the RLDS format.
+    
+    Args:
+        dataset: tf.data.Dataset: The dataset to save.
+        dataset_info: tfds.core.DatasetInfo: Information about the dataset.
+        max_episodes_per_shard: int: Maximum number of episodes per shard.
+        overwrite: bool: Whether to overwrite existing files.
+        eps_filtering_fn: Optional[Callable[[int, Dict[str, Any]], bool]]: A function that
+            takes an episode index and the episode data and returns a boolean indicating
+            whether to include the episode in the saved dataset. Return False to skip
+    """
     writer = SequentialWriter(
         dataset_info, max_episodes_per_shard, overwrite=overwrite
     )
@@ -107,11 +119,16 @@ def save_rlds_dataset(
         return d
 
     # Write episodes to disk
-    for episode in tqdm.tqdm(dataset, desc="Writing episodes"):
+    for idx, episode in enumerate(tqdm.tqdm(dataset, desc="Writing episodes")):
         # Manage non-"steps" keys data, e.g. language_embedding, metadata, etc.
         episodic_data_dict = {
             key: episode[key] for key in episode.keys() if key != "steps"
         }
+        
+        # Skip this episode if filter returns False
+        if eps_filtering_fn and not eps_filtering_fn(idx, episodic_data_dict):
+            continue
+
         episodic_data_dict = recursive_dict_to_numpy(episodic_data_dict)
         steps = []
         for step in episode["steps"]:

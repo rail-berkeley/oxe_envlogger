@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-# try:
-#     import gymnasium as gym
-# except ImportError:
-#     print("gynasium is not installed, use gym instead")
-import gym
+try:
+    import gymnasium as gym
+except ImportError:
+    print("gynasium is not installed, use gym instead")
+    import gym
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -97,7 +97,7 @@ def from_space_to_spec(space_def: gym.Space, name: str) -> specs:
     if isinstance(space_def, gym.spaces.dict.Dict):
         spec = {
             key: specs.Array(
-                shape=space.shape,
+                shape=space_def.shape if space_def.shape is not None else (),
                 dtype=space.dtype,
                 name=key,
             )
@@ -105,7 +105,7 @@ def from_space_to_spec(space_def: gym.Space, name: str) -> specs:
         }
     else:
         spec = specs.Array(
-            shape=space_def.shape,
+            shape=space_def.shape if space_def.shape is not None else (),
             dtype=space_def.dtype,
             name=name,
         )

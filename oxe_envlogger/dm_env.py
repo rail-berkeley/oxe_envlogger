@@ -4,7 +4,7 @@ import numpy as np
 
 import gym
 import dm_env
-from dm_env import specs
+from dm_env import TimeStep, StepType, specs
 
 from typing import Any, Dict, List, Tuple, Callable, Optional
 from oxe_envlogger.data_type import from_space_to_spec, enforce_type_consistency
@@ -106,7 +106,10 @@ class DummyDmEnv():
         obs = enforce_type_consistency(self.observation_space, obs)
 
         if terminate:
-            ts = dm_env.termination(reward=reward, observation=obs)
+            # NOTE: explicitly set discount to custom float32 since dm_env.termination() is using float64
+            # https://github.com/google-deepmind/dm_env/blob/91b46797fea731f80eab8cd2c8352a0674141d89/dm_env/_environment.py#L226
+            # ts = dm_env.termination(reward=reward, observation=obs), 
+            ts = TimeStep(StepType.LAST, reward, np.float32(0.0), obs)
         elif truncate:
             ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(1.0))
         else:
