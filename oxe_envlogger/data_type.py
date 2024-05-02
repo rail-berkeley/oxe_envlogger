@@ -98,7 +98,7 @@ def from_space_to_spec(space_def: gym.Space, name: str) -> specs:
         spec = {
             key: specs.Array(
                 shape=space_def.shape if space_def.shape is not None else (),
-                dtype=space.dtype,
+                dtype=space_def.dtype,
                 name=key,
             )
             for key, space in space_def.spaces.items()
