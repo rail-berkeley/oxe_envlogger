@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='oxe_envlogger',
-    version='0.0.2,
+    version='0.0.2',
     description='library to log env to tfds',
     url='https://github.com/rail-berkeley/oxe_envlogger',
     author='auth',
