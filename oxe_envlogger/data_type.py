@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import numpy as np
-try:
-    import gymnasium as gym
-except ImportError:
-    print("gynasium is not installed, use gym instead")
-    import gym
+import gym
+#try:
+#    import gymnasium as gym
+#except ImportError:
+#    print("gynasium is not installed, use gym instead")
+#    import gym
 
 import tensorflow as tf
 import tensorflow_datasets as tfds

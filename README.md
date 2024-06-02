@@ -128,7 +128,7 @@ Notes: type casting is very important in the env logger. For example, the define
 # --rlds_dirs: directory(s) that contain nested directories of rlds logs
 # --output_rlds: directory to store the merged rlds logs
 # --shard_size: number of episodes per file
-# --overwrite: overwrite the output directory
+# --overwrite: overwrite the output directory to start from `.tfrecord-00000`
 python3 reshard_rlds.py --overwrite --rlds_dirs all_logs --output_rlds output_rlds --shard_size 15
 ```
 

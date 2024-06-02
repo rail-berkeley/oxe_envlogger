@@ -34,6 +34,7 @@ class GymReturn:
             obs, reward, terminate, truncate, info = val
         # NOTE: since logging is done async, this is important to ensure the obs is
         # immutable even after wrapper, thus deepcopy
+        reward = np.float32(reward)
         obs = copy.deepcopy(obs)
         return obs, reward, terminate, truncate, info
 
