@@ -125,7 +125,7 @@ class RLDSLogger:
         elif step_type == RLDSStepType.RESTART:
             ts = dm_env.restart(obs)
         elif step_type == RLDSStepType.TRANSITION:
-            ts = dm_env.truncation(reward=reward, observation=obs, discount=np.float32(1.0))
+            ts = dm_env.transition(reward=reward, observation=obs, discount=np.float32(1.0))
         else:
             raise NotImplementedError
 
