@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+"""Example usage:
+python reshard_rlds.py
+    --rlds_dirs /path/to/dataset1 /path/to/dataset2
+    --output_rlds /path/to/output_dir
+    --overwrite
+    --skip_eps_indices 4 5
+"""
+
 import os
 import argparse
 import copy
@@ -15,6 +23,8 @@ if __name__ == "__main__":
     parser.add_argument("--rlds_dirs", type=str, nargs='+', required=True)
     parser.add_argument("--output_rlds",  type=str, required=True)
     parser.add_argument("--overwrite", action='store_true')
+    parser.add_argument("--skip_eps_indices", type=int, nargs='+', default=[],
+                        help="List of episode indices to skip")
     parser.add_argument("--shard_size", type=int, default=1500, help="Max episodes per shard")
     args = parser.parse_args()
 
@@ -52,12 +62,25 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_rlds):
         os.makedirs(args.output_rlds)
 
+    # For user to skip some episodes
+    if args.skip_eps_indices:
+        print_yellow(f"Skipping episodes: {args.skip_eps_indices}")
+        skip_eps_indices = set(args.skip_eps_indices)
+
+        def eps_filtering_fn(idx, metadata):
+            # return false to skip the episode
+            return idx not in skip_eps_indices
+    else:
+        eps_filtering_fn = None
+
+    # save the merged dataset to disk
     print_yellow(f"Writing episodes to disk: [{args.output_rlds}]")
     save_rlds_dataset(
         dataset=merged_dataset,
         dataset_info=dataset_info,
         max_episodes_per_shard=args.shard_size,
-        overwrite=args.overwrite
+        overwrite=args.overwrite,
+        eps_filtering_fn=eps_filtering_fn,
     )
     print("Updated dataset info: ", dataset_info)
     print_yellow(f"Saved rlds dataset to: {args.output_rlds}")
