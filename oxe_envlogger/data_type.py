@@ -26,7 +26,15 @@ def get_gym_space(data_sample: Any) -> gym.spaces.Space:
     if isinstance(data_sample, (np.ndarray, list, tuple)):
         # Ensure it's a numpy array to get shape and dtype
         data_sample = np.array(data_sample)
-        return gym.spaces.Box(low=-np.inf, high=np.inf,
+        if np.issubdtype(data_sample.dtype, np.integer):
+            low = np.iinfo(data_sample.dtype).min
+            high = np.iinfo(data_sample.dtype).max
+        elif np.issubdtype(data_sample.dtype, np.inexact):
+            low = float("-inf")
+            high = float("inf")
+        else:
+            raise ValueError()
+        return gym.spaces.Box(low=low, high=high,
                               shape=data_sample.shape, dtype=data_sample.dtype)
     # Case for dictionary data
     elif isinstance(data_sample, dict):
