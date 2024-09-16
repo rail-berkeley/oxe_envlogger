@@ -86,6 +86,7 @@ def save_rlds_dataset(
     max_episodes_per_shard: int = 1000,
     overwrite: bool = False,
     eps_filtering_fn: Optional[Callable[[int, Dict[str, Any]], bool]] = None,
+    step_relabel_fn: Optional[Callable[[str, Any], Any]] = None,
 ):
     """
     Save the dataset to disk in the RLDS format.
@@ -98,6 +99,8 @@ def save_rlds_dataset(
         eps_filtering_fn: Optional[Callable[[int, Dict[str, Any]], bool]]: A function that
             takes an episode index and the episode data and returns a boolean indicating
             whether to include the episode in the saved dataset. Return False to skip
+        eps_relabel_fn: Optional[Callable[[str, Any], Any]]: A function that takes a key
+            and a value and returns the relabeled value. If None, no relabel
     """
     writer = SequentialWriter(
         dataset_info, max_episodes_per_shard, overwrite=overwrite
@@ -116,6 +119,8 @@ def save_rlds_dataset(
                 recursive_dict_to_numpy(v)
             else:
                 d[k] = v.numpy()
+                if step_relabel_fn:
+                    d[k] = step_relabel_fn(k, d[k])
         return d
 
     # Write episodes to disk
