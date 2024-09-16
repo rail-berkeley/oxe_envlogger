@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip_eps_indices", type=int, nargs='+', default=[],
                         help="List of episode indices to skip")
     parser.add_argument("--shard_size", type=int, default=1500, help="Max episodes per shard")
+    parser.add_argument("--relabel_lang", type=str, default=None, help="Relabel language")
     args = parser.parse_args()
 
     # Recursively find all datasets in the given directories
@@ -62,6 +63,9 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_rlds):
         os.makedirs(args.output_rlds)
 
+    eps_filtering_fn = None
+    step_relabel_fn = None
+
     # For user to skip some episodes
     if args.skip_eps_indices:
         print_yellow(f"Skipping episodes: {args.skip_eps_indices}")
@@ -70,8 +74,15 @@ if __name__ == "__main__":
         def eps_filtering_fn(idx, metadata):
             # return false to skip the episode
             return idx not in skip_eps_indices
-    else:
-        eps_filtering_fn = None
+
+    # For user to relabel the language
+    if args.relabel_lang:
+        print_yellow(f"Relabeling language: {args.relabel_lang}")
+        def step_relabel_fn(key, value):
+            if key == 'language_text':
+                # print(f"Relabeling language_text from {value} to {args.relabel_lang}")
+                return args.relabel_lang
+            return value
 
     # save the merged dataset to disk
     print_yellow(f"Writing episodes to disk: [{args.output_rlds}]")
@@ -81,6 +92,7 @@ if __name__ == "__main__":
         max_episodes_per_shard=args.shard_size,
         overwrite=args.overwrite,
         eps_filtering_fn=eps_filtering_fn,
+        step_relabel_fn=step_relabel_fn,
     )
     print("Updated dataset info: ", dataset_info)
     print_yellow(f"Saved rlds dataset to: {args.output_rlds}")
